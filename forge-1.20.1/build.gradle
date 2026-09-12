@@ -26,6 +26,8 @@ repositories {
     maven { url = uri('https://maven.neoforged.net/releases') }
     // Curios 1.20.1 来自 Modrinth maven(供 item/CuriosCompat 使用)
     maven { url 'https://api.modrinth.com/maven' }
+    // Cloth Config(配置 GUI + AutoConfig)官方 maven
+    maven { url 'https://maven.shedaniel.me/' }
 }
 
 legacyForge {
@@ -47,6 +49,12 @@ dependencies {
     // Curios API(1.20.1 Forge = Curios 5.x)。
     // 仅 item/CuriosCompat 需要;由消费方 mod 声明为必需前置,故此处按实现依赖引入。
     modImplementation "maven.modrinth:curios:IPQlZkz1"
+
+    // Cloth Config(必须前置,由消费方在 mods.toml 声明)。11.1.136 = MC 1.20.1 / Forge 47.x。
+    // Forge 1.20.1 的生产命名空间是 SRG,该发布 jar 内含 819 处 m_xxxxx_ 形态方法名(已实测),
+    // 因此必须走 modImplementation,由 MDG legacyforge 在解析期重映射为 dev Mojmap,
+    // 与 Curios 同一机制。
+    modImplementation "me.shedaniel.cloth:cloth-config-forge:${cloth_config_version}"
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
@@ -59,6 +67,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_name               : mod_name,
             mod_license            : mod_license,
             mod_version            : mod_version,
+            cloth_config_version_range: cloth_config_version_range,
     ]
     inputs.properties replaceProperties
     expand replaceProperties

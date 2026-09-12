@@ -66,21 +66,53 @@ forge-1.20.1/               ← 平台子项目：Java 17 · reobf(SRG) · ModDe
 
 ---
 
-## 3. 配置解耦
+## 3. 配置模块（Cloth Config AutoConfig）
 
-`ModConfigSpec`（NeoForge）与 `ForgeConfigSpec`（Forge）不通用，因此配置**不进库**：
+`ModConfigSpec`（NeoForge）与 `ForgeConfigSpec`（Forge）不通用，但 **Cloth Config 的
+`ConfigBuilder` / `ConfigEntryBuilder` / `autoconfig.*` 在 15.0.140（neoforge 1.21.1）与
+11.1.136（forge 1.20.1）上已逐一字节比对一致**（这是 schema 能进 `common` 的唯一依据），
+因此配置模块整体下沉至库内，平台侧只保留各自的屏幕扩展点：
 
 ```
-库（共享）                          消费方（各平台）
-GameplayConfigValues  (record)  ←──  GameplayConfigBinder.refresh()
-GameplayConstants.applyConfig()      读取自身 ModCommonConfig 后回填
+库（共享）                                          消费方（各平台）
+StarEngineCommonConfig  @Config(name="astral_dice")   @Mod 构造期调一次 StarEngineConfigs.register()
+StarEngineConfigs       AutoConfig.register(...)      + 注册屏幕扩展点
+LegacyCommonTomlImporter  旧 .toml → 新 .json 迁移      （IConfigScreenFactory / ConfigScreenHandler）
+StarEngineConfigScreen    屏幕工厂（隔离 Screen 引用）
 ```
 
-- `GameplayConfigValues` 是平台无关的**值快照**（纯 record，13 个字段）。
-- `GameplayConstants.applyConfig(...)` 把快照写入静态常量，并派生 `×20` 的 tick 量。
-- 消费方在两个平台各有一个 `GameplayConfigBinder`，负责「读自己的配置 → 构造快照 → 调用 `applyConfig`」。
+- 文件读写与配置 GUI 全部由 Cloth 的 `AutoConfig` 接管（`GsonConfigSerializer`）。
+- `StarEngineConfigs` 注册 load/save 监听器（返回 `InteractionResult.PASS` = 仅观察、不拦截），
+  把值回填进平台无关的 `GameplayConfigValues`（record）→ `GameplayConstants.applyConfig(...)`。
+- 屏幕工厂单独放在 `client/StarEngineConfigScreen`，避免服务端 classpath 链接仅客户端的 `Screen`
+  类而 `NoClassDefFoundError`。
+- 字段名即持久化契约：**重命名任一 `public` 字段等于静默重置玩家该项配置**（并使其语言标签
+  退化为键名），与注册名同级，改动前必须按破坏性变更处理。字段不得含静态成员
+  （`ConfigScreenProvider` 不过滤 `static`/`final`，否则 GUI 会尝试写 final 字段）。
+- `@ConfigEntry.BoundedDiscrete` 只约束 GUI，直接手改 JSON 可利用越界值，故在
+  `validatePostLoad()` 内再钳回区间。
 
-**配置文件名与路径不变**（`config/astral_dice-common.toml`），存量配置不会重置。
+**破坏性变更**：配置文件由 `config/astral_dice-common.toml`（TOML / 扁平 snake_case）变为
+`config/astral_dice.json`（JSON / 嵌套 camelCase，`.json` 后缀由 `GsonConfigSerializer` 硬编码）。
+`LegacyCommonTomlImporter` 仅在「旧 TOML 存在且新 JSON 不存在」时一次性 seed，并把旧文件
+重命名为 `astral_dice-common.toml.bak`；解析异常退回默认值而不阻断启动。
+
+> ⚠️ **命名空间被固定为 `astral_dice`**（同时决定文件名与语言键前缀
+> `text.autoconfig.astral_dice.*`），因此该模块当前**只支持单一消费方**；
+> 若第二个模组要复用，需把 `StarEngineConfigs.register()` 改为由消费方传入自己的 `@Config` 类
+> （各自命名空间 + 各自语言文件）。
+
+### 3.1 Cloth Config 前置依赖
+
+`common` 的 `config` 包直接引用 `me.shedaniel.autoconfig.*`，故 **Cloth Config 是本库的必需前置**：
+
+| 平台 | 引入方式 | 原因 |
+|---|---|---|
+| NeoForge 1.21.1 | `implementation "me.shedaniel.cloth:cloth-config-neoforge:15.0.140"` | 官方映射，jar 内 0 处 SRG 名，无需重映射 |
+| Forge 1.20.1 | `modImplementation "me.shedaniel.cloth:cloth-config-forge:11.1.136"` | jar 内 819 处 `m_xxxxx_` SRG 方法名，须由 MDG LegacyForge 重映射（与 Curios 同机制） |
+
+两侧 `mods.toml` 均已把 `cloth_config` 声明为必需前置（`type="required"` / `mandatory=true`、
+`ordering="AFTER"`）。**已发布的库 jar 不会传递依赖**，因此消费方也须自行显式声明该依赖。
 
 ---
 
@@ -102,8 +134,8 @@ GameplayConstants.applyConfig()      读取自身 ModCommonConfig 后回填
 
 | 平台 | 坐标 | 发布产物 |
 |---|---|---|
-| NeoForge 1.21.1 | `com.merlinkitsune.starengine:starengine_lib-neoforge-1.21.1:1.0.0` | `jar`（NeoForge 编译与生产同为 Mojmap，无需重映射） |
-| Forge 1.20.1 | `com.merlinkitsune.starengine:starengine_lib-forge-1.20.1:1.0.0` | `reobfJar`（**生产 SRG jar**） |
+| NeoForge 1.21.1 | `com.merlinkitsune.starengine:starengine_lib-neoforge-1.21.1:1.1.0` | `jar`（NeoForge 编译与生产同为 Mojmap，无需重映射） |
+| Forge 1.20.1 | `com.merlinkitsune.starengine:starengine_lib-forge-1.20.1:1.1.0` | `reobfJar`（**生产 SRG jar**） |
 
 **Forge 侧必须发布 `reobfJar` 而非 `jar`**：消费方 MDG LegacyForge 在解析期会把生产 SRG jar
 重映射为 dev Mojmap 命名；若发布未重混淆的 dev jar，生产环境会因成员名为 Mojmap 而 `NoSuchFieldError`。
@@ -114,13 +146,13 @@ GameplayConstants.applyConfig()      读取自身 ModCommonConfig 后回填
 // NeoForge 1.21.1
 repositories { mavenLocal() }
 dependencies {
-    implementation "com.merlinkitsune.starengine:starengine_lib-neoforge-1.21.1:1.0.0"
+    implementation "com.merlinkitsune.starengine:starengine_lib-neoforge-1.21.1:1.1.0"
 }
 
 // Forge 1.20.1
 repositories { mavenLocal() }
 dependencies {
-    modImplementation "com.merlinkitsune.starengine:starengine_lib-forge-1.20.1:1.0.0"
+    modImplementation "com.merlinkitsune.starengine:starengine_lib-forge-1.20.1:1.1.0"
 }
 ```
 
@@ -158,9 +190,13 @@ dependencies {
 ## 5. 目录内容
 
 ```
-common/src/main/java/com/merlinkitsune/starengine/     # 共享源码（31 个文件）
-├── client/       ClientDamageNumbers                  # 伤害数字浮字
+common/src/main/java/com/merlinkitsune/starengine/     # 共享源码（35 个文件）
+├── client/       ClientDamageNumbers, StarEngineConfigScreen
+│                 （后者隔离 Screen 引用，供平台侧注册配置 GUI）
 ├── component/    GameplayConfigValues, GameplayConstants
+├── config/       StarEngineCommonConfig（@Config schema）
+│                 StarEngineConfigs（register / 监听器 / 快照回填）
+│                 LegacyCommonTomlImporter（旧 .toml → 新 .json 一次性迁移）
 ├── effect/       18 个 MobEffect 实现
 ├── event/        AstralEventType / EventContext / EventEffect / EventTargetCollector
 │                 AmethystDiceHandler / SignActiveTriggeredEvent

@@ -37,3 +37,12 @@ StarEngine 星引擎 —— Astral Dice(星之骰戏)系列模组共用的引擎
     versionRange="[5,6)"
     ordering="AFTER"
     side="BOTH"
+
+# Cloth Config(必须前置):common 的 config 包直接引用 me.shedaniel.autoconfig.* 与
+# clothconfig2 的 ConfigBuilder 屏幕工厂,缺失将导致 NoClassDefFoundError。
+[[dependencies.${mod_id}]]
+    modId="cloth_config"
+    mandatory=true
+    versionRange="${cloth_config_version_range}"
+    ordering="AFTER"
+    side="BOTH"
