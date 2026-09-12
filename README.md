@@ -134,8 +134,10 @@ StarEngineConfigScreen    屏幕工厂（隔离 Screen 引用）
 
 | 平台 | 坐标 | 发布产物 |
 |---|---|---|
-| NeoForge 1.21.1 | `com.merlinkitsune.starengine:starengine_lib-neoforge-1.21.1:1.1.0` | `jar`（NeoForge 编译与生产同为 Mojmap，无需重映射） |
-| Forge 1.20.1 | `com.merlinkitsune.starengine:starengine_lib-forge-1.20.1:1.1.0` | `reobfJar`（**生产 SRG jar**） |
+| NeoForge 1.21.1 | `com.merlinkitsune.starengine:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.1` | `jar`（NeoForge 编译与生产同为 Mojmap，无需重映射） |
+| Forge 1.20.1 | `com.merlinkitsune.starengine:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.1` | `reobfJar`（**生产 SRG jar**） |
+
+> 两侧版本号**同号**，升级时两个 `gradle.properties` 必须一起改。
 
 **Forge 侧必须发布 `reobfJar` 而非 `jar`**：消费方 MDG LegacyForge 在解析期会把生产 SRG jar
 重映射为 dev Mojmap 命名；若发布未重混淆的 dev jar，生产环境会因成员名为 Mojmap 而 `NoSuchFieldError`。
@@ -146,15 +148,19 @@ StarEngineConfigScreen    屏幕工厂（隔离 Screen 引用）
 // NeoForge 1.21.1
 repositories { mavenLocal() }
 dependencies {
-    implementation "com.merlinkitsune.starengine:starengine_lib-neoforge-1.21.1:1.1.0"
+    implementation "com.merlinkitsune.starengine:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.1"
 }
 
 // Forge 1.20.1
 repositories { mavenLocal() }
 dependencies {
-    modImplementation "com.merlinkitsune.starengine:starengine_lib-forge-1.20.1:1.1.0"
+    modImplementation "com.merlinkitsune.starengine:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.1"
 }
 ```
+
+本库目前只发布到 **mavenLocal**（无远程 maven），因此消费方要么本机 clone 本仓并
+`./gradlew publishToMavenLocal`，要么从本仓 Release 直接取 jar 放进整合包。
+CI 场景见 §4.4。
 
 两侧 `mods.toml` 需声明为必需前置：
 
@@ -162,10 +168,20 @@ dependencies {
 [[dependencies.<mod_id>]]
     modId="starengine_lib"
     type="required"        # 1.20.1 Forge 用 mandatory=true
-    versionRange="[1.0,2.0)"
+    versionRange="[1.0.0-SNAPSHOT,2.0)"
     ordering="AFTER"
     side="BOTH"
 ```
+
+> ⚠️ **区间下界不要写成 `[1.0,2.0)`**。按 Maven `ComparableVersion` 语义，
+> `1.0.0-SNAPSHOT.1 < 1.0`（预发布限定符排在正式版本之前），因此 `[1.0,2.0)` **不含**任何
+> `1.0.0-SNAPSHOT.x`——游戏会以「缺失/不满足必需前置」拒绝加载。
+> 实测（`maven-artifact` 3.8.5，两侧加载器均走 `MavenVersionAdapter.createFromVersionSpec`）：
+>
+> | 区间 | `1.0.0-SNAPSHOT.1` | `1.0.0` | `1.1.0` |
+> |---|---|---|---|
+> | `[1.0,2.0)` | ❌ | ✅ | ✅ |
+> | `[1.0.0-SNAPSHOT,2.0)` | ✅ | ✅ | ✅ |
 
 > 修改库代码后，消费方 Gradle 会缓存 mavenLocal 的解析结果。
 > 若消费方未取到新版本，用 `--refresh-dependencies` 或 bump `lib_version`。
@@ -184,6 +200,24 @@ dependencies {
 
 > **这一步不可省略**：消费方把 `starengine_lib` 声明为必需前置，
 > 库 jar 不在整合包内会导致整合包直接拒绝启动。
+
+### 4.4 CI / 自动 Release（GitHub Actions）
+
+仓库托管于 <https://github.com/merlin-kitsune/starengine_lib>，工作流 `.github/workflows/build.yml`
+沿用消费方 Astral Dice 的发布规范：
+
+| 触发 | 行为 |
+|---|---|
+| push / PR / 手动 | 双 JDK（21 + 17）→ `./gradlew build` → 上传 `starengine_lib-jars` 构建产物 |
+| push 到 `main` 且版本号为**正式版** | 自动打 tag（tag = 基础版本号，如 `1.0.0`，无 `v` 前缀、无 `+加载器` 后缀） |
+| push tag `/^[0-9]/` | 创建/更新 GitHub Release，附件 = 两个平台的 jar |
+
+> tag 规则比消费方多一道守卫：版本号含 `-`（即快照）时**不打 tag**。
+> 否则 `1.0.0-SNAPSHOT.1` 会被 `%%-*` 截成 `1.0.0` 并自动打出正式 tag，把未定型的快照误标为发布。
+
+**消费方 CI 依赖本库**：Astral Dice 的 `build.yml` 会先 checkout 本仓并
+`./gradlew publishToMavenLocal`，再构建自身——因为本库只在 mavenLocal 发布，CI 上无法直接解析。
+两者版本号必须对齐（消费方 `starengine_lib_version` ↔ 本库 `lib_version`），否则消费方 CI 断在依赖解析。
 
 ---
 
@@ -225,7 +259,9 @@ forge-1.20.1/src/main/java/.../starengine/             # 平台专有（7 个文
 
 ## 6. 版本与兼容
 
-- 库版本遵循 semver，`1.x` 内保持 API 兼容；消费方 `mods.toml` 声明 `versionRange="[1.0,2.0)"`。
+- 库版本遵循 semver，`1.x` 内保持 API 兼容；消费方 `mods.toml` 声明 `versionRange="[1.0.0-SNAPSHOT,2.0)"`。
+  > 下界必须写到 `1.0.0-SNAPSHOT`：`[1.0,2.0)` 不含 `1.0.0-SNAPSHOT.x`（见 §4.2）。
+- 当前为 `1.0.0-SNAPSHOT.1`，SNAPSHOT 系列**不作**语义化兼容承诺；转正式 `1.0.0` 后再适用上一条。
 - 共享源码中对 MC API 的使用受两侧编译期约束，破坏性变更会在**编译期**而非运行期暴露。
 
 ---
