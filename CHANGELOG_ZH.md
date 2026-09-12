@@ -3,10 +3,14 @@
 > 本文件仅收录中文更新日志；英文版见 [`CHANGELOG.md`](CHANGELOG.md)。
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 
-## 未发布（1.0.0-SNAPSHOT.1）
+## 未发布（1.0.0-SNAPSHOT.2）
 
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
-> 版本号说明：本库此前以 `1.1.0` 在本地构建（除 `mavenLocal` 外未发布到任何地方）。为首次对外发布，已改号为 **`1.0.0-SNAPSHOT.1`**，故本条目覆盖 `1.0.0-SNAPSHOT.1` 的全部内容。
+> 版本号说明：本库此前以 `1.1.0` 在本地构建（除 `mavenLocal` 外未发布到任何地方），为首次对外发布改号为 `1.0.0-SNAPSHOT.1`；现改为 **`1.0.0-SNAPSHOT.2`** —— Java 包名发生重命名，而 `mod_version` 仍停在 `1.0.0`，只能靠 patch 段承载这次改名，否则依赖区间无从区分新旧 jar。又因 `1.0.0-SNAPSHOT.1` 除 `mavenLocal` 外未进入任何仓库，两个版本号的条目在此合并为一份 `1.0.0-SNAPSHOT.2` 更新日志。
+
+### 破坏性变更
+
+- **Java 包名 `com.merlinkitsune.starengine` → `com.merlinkitsune.starenginelib`，Maven `groupId` 随之迁移。** 只在「这是包名」的位置把 `starengine` 段替换为 `starenginelib`：`package` / `import` 语句、javadoc `{@link}` 目标、三个源码目录（`common`、`neoforge-1.21.1`、`forge-1.20.1`）与两侧 `gradle.properties` 的 `mod_group_id` —— 共 50 个文件、69 处，另加发布用 `groupId`（`com.merlinkitsune.starengine` → `com.merlinkitsune.starenginelib`）。**有意保持不变**的：mod id `starengine_lib`、显示名 `StarEngine Lib`、全部 `StarEngine*` 类名，以及所有历史记录（旧 CHANGELOG 条目、`docs/starengine-lib/`、一次性脚本 `tools/migrate_to_starengine_lib.py`）。本次改名**在同一版本号上二进制不兼容** —— 改名前的 `.1` jar 与本 `.2` jar 拥有完全相同的 `modId` 与相同的 MC 版本后缀，但类名不同 —— 因此消费方必须同时抬高区间下界（见下方「工程」）。替换为字面量、字节级（`starengine(?![A-Za-z0-9_])`，大小写敏感），故 `starengine_lib`（mod id）、`starenginelib`（新包名）、`StarEngine`（品牌/类名前缀）均不可能被命中；且保留原行尾，diff 严格「一处一行」，无 CRLF/LF 噪音。改名后以开包方式核对：两个平台 jar 分别 45（neoforge）/ 47（forge）个 class，类路径与常量池中**旧包名 0 处**；对仓库（含二进制）的全字节扫描同样 0 处真引用。若某消费方产物把库的全限定类名以**字符串**形式配对（Mixin 配置指向 `com.merlinkitsune.starengine.*`、混淆映射、反射或代码生成），也必须同步改写；本仓库已无此类引用。客户端可见影响：无。
 
 ### 新内容
 
@@ -25,5 +29,6 @@
 - **Maven 发布**：NeoForge 侧 `from components.java` 发布普通 Mojmap jar（NeoForge 自 1.20.5 起编译与生产同为 Mojmap，无需重映射）；Forge 1.20.1 侧发布 `reobfJar`，即**生产 SRG jar** —— 消费方 MDG LegacyForge 会在解析期把 SRG jar 重映射为 dev Mojmap 命名，若发布未重混淆的 dev jar，生产环境会因成员名为 Mojmap 而 `NoSuchFieldError`。两侧均显式指定 `artifactId`，使坐标与 `archivesName` 一致。
 - **build 自动部署**：`build` 结束后 `pushToPack` 会把库 jar 复制进两个整合包的 `mods` 目录（Forge 测试包推 SRG jar、NeoForge 包推普通 jar），与消费方既有的「build 即部署」约定一致。此步不可省略：消费方把 `starengine_lib` 声明为必需前置，库 jar 不在包内会导致整合包直接拒绝启动。
 - **托管到 GitHub，并配上独立 CI 与 Release**：仓库现位于 <https://github.com/merlin-kitsune/starengine_lib>，新增 `.github/workflows/build.yml`，沿用 Astral Dice 的发布规范：每次 push / PR / 手动触发均以 JDK 21 + JDK 17 构建双平台，并上传 `starengine_lib-jars` 构建产物；push 到 `main` 自动打 tag（tag = 基础版本号，无 `v` 前缀、无 `+加载器` 后缀）；push tag 则创建/更新 GitHub Release，附件为两个平台的 jar。相较消费方规则**多加一道守卫**：版本号含 `-`（即快照）时**不打 tag**，否则 `1.0.0-SNAPSHOT.1` 会被截成 `1.0.0` 并被当成正式发布自动打出，且 tag 难以回收。另修复了 `gradlew` 在 git 索引中丢失的可执行位（`100644` → `100755`）：仓库自 Windows 提交，wrapper 不带执行权限，Runner 上 `./gradlew` 在 Gradle 启动前就因 `Permission denied`（exit 126）退出；又因消费方 CI 需先 checkout 本库，这一个缺陷会同时打红**两个**仓库的 Action。
-- **前置版本区间下界必须是 `1.0.0-SNAPSHOT` 而非 `1.0`**：按 Maven `ComparableVersion` 语义 `1.0.0-SNAPSHOT.1 < 1.0`，消费方若写 `versionRange="[1.0,2.0)"` 会拒绝所有 `1.0.0-SNAPSHOT.x`，游戏直接以「不满足必需前置」拒绝加载。已用 `maven-artifact` 3.8.5 实测（两侧加载器均经 `MavenVersionAdapter.createFromVersionSpec` → `VersionRange.createFromVersionSpec`）：`[1.0,2.0)` 不含 `1.0.0-SNAPSHOT.1`，而 `[1.0.0-SNAPSHOT,2.0)` 连同 `1.0.0` / `1.1.0` 一并包含。
+- **前置版本区间下界必须是 `1.0.0-SNAPSHOT` 而非 `1.0`**：按 Maven `ComparableVersion` 语义 `1.0.0-SNAPSHOT.1 < 1.0`，消费方若写 `versionRange="[1.0,2.0)"` 会拒绝所有 `1.0.0-SNAPSHOT.x`，游戏直接以「不满足必需前置」拒绝加载。已用 `maven-artifact` 3.8.5 实测（两侧加载器均经 `MavenVersionAdapter.createFromVersionSpec` → `VersionRange.createFromVersionSpec`）：`[1.0,2.0)` 不含 `1.0.0-SNAPSHOT.1`，而 `[1.0.0-SNAPSHOT,2.0)` 连同 `1.0.0` / `1.1.0` 一并包含。下界还须精确到快照序号（当前为 `.2`，见下一条），否则区间过宽、挡不住同坐标的旧 jar。
+- **消费方必须把区间下界抬到 `1.0.0-SNAPSHOT.2`**：改名前后两个 jar 的 `modId` 与版本号形态完全相同，只差 patch 段，故 `[1.0.0-SNAPSHOT,2.0)` 会**同时**匹配两者 —— 一份残留在 `mavenLocal` 的 `.1`（或整合包内夹带的旧 jar）会被区间放行，随后在运行期以 `NoClassDefFoundError: com/merlinkitsune/starengine/...` 崩溃。`[1.0.0-SNAPSHOT.2,2.0)` 拒绝 `.1`，同时接受 `.2` / `.3` / `.10` / `1.0.0` / `1.1.0`，并照旧拒绝 `2.0.0`。已用 `maven-artifact` 3.8.5 按三区间 × 七版本实测；注意 `.10` 是按**数值**而非字典序比较，故两位数的 patch 段不会掉出区间。
 - **消费方 CI 改为先构建本库**：本库仅发布到 `mavenLocal`，故 Astral Dice 的 `build.yml` 会先 checkout 本仓并执行 `./gradlew publishToMavenLocal`，再构建自身。因此两个仓库的版本号必须严格对齐（消费方的 `starengine_lib_version` ↔ 本库的 `lib_version`），否则消费方 CI 会断在依赖解析。

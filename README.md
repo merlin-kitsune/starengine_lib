@@ -134,8 +134,8 @@ StarEngineConfigScreen    屏幕工厂（隔离 Screen 引用）
 
 | 平台 | 坐标 | 发布产物 |
 |---|---|---|
-| NeoForge 1.21.1 | `com.merlinkitsune.starengine:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.1` | `jar`（NeoForge 编译与生产同为 Mojmap，无需重映射） |
-| Forge 1.20.1 | `com.merlinkitsune.starengine:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.1` | `reobfJar`（**生产 SRG jar**） |
+| NeoForge 1.21.1 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.2` | `jar`（NeoForge 编译与生产同为 Mojmap，无需重映射） |
+| Forge 1.20.1 | `com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.2` | `reobfJar`（**生产 SRG jar**） |
 
 > 两侧版本号**同号**，升级时两个 `gradle.properties` 必须一起改。
 
@@ -148,13 +148,13 @@ StarEngineConfigScreen    屏幕工厂（隔离 Screen 引用）
 // NeoForge 1.21.1
 repositories { mavenLocal() }
 dependencies {
-    implementation "com.merlinkitsune.starengine:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.1"
+    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.2"
 }
 
 // Forge 1.20.1
 repositories { mavenLocal() }
 dependencies {
-    modImplementation "com.merlinkitsune.starengine:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.1"
+    modImplementation "com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.2"
 }
 ```
 
@@ -168,20 +168,29 @@ CI 场景见 §4.4。
 [[dependencies.<mod_id>]]
     modId="starengine_lib"
     type="required"        # 1.20.1 Forge 用 mandatory=true
-    versionRange="[1.0.0-SNAPSHOT,2.0)"
+    versionRange="[1.0.0-SNAPSHOT.2,2.0)"
     ordering="AFTER"
     side="BOTH"
 ```
 
 > ⚠️ **区间下界不要写成 `[1.0,2.0)`**。按 Maven `ComparableVersion` 语义，
-> `1.0.0-SNAPSHOT.1 < 1.0`（预发布限定符排在正式版本之前），因此 `[1.0,2.0)` **不含**任何
-> `1.0.0-SNAPSHOT.x`——游戏会以「缺失/不满足必需前置」拒绝加载。
+> `1.0.0-SNAPSHOT.x < 1.0`（预发布限定符排在正式版本之前），因此 `[1.0,2.0)` **不含**任何
+> 快照版本——游戏会以「缺失/不满足必需前置」拒绝加载。
+>
+> ⚠️ **下界要精确到当前快照序号（如 `.2`）**，不要停在 `[1.0.0-SNAPSHOT,2.0)`。
+> 宽松区间会把**改名前的旧库 jar** 一并接受——它 `modId` 相同、版本号也可能相同，
+> 但带的是旧包名 `com.merlinkitsune.starengine`，加载后必然 `NoClassDefFoundError` 崩溃。
+> 收紧区间可把这种错配变成加载器层面的「缺必需前置」明确报错。
+>
 > 实测（`maven-artifact` 3.8.5，两侧加载器均走 `MavenVersionAdapter.createFromVersionSpec`）：
 >
-> | 区间 | `1.0.0-SNAPSHOT.1` | `1.0.0` | `1.1.0` |
-> |---|---|---|---|
-> | `[1.0,2.0)` | ❌ | ✅ | ✅ |
-> | `[1.0.0-SNAPSHOT,2.0)` | ✅ | ✅ | ✅ |
+> | 区间 | `.1`（改名前） | `.2` | `.3` | `.10` | `1.0.0` | `1.1.0` | `2.0.0` |
+> |---|---|---|---|---|---|---|---|
+> | `[1.0,2.0)` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
+> | `[1.0.0-SNAPSHOT,2.0)` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+> | `[1.0.0-SNAPSHOT.2,2.0)` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+>
+> （注：`.10` 一列验证序号按数值而非字典序比较。）
 
 > 修改库代码后，消费方 Gradle 会缓存 mavenLocal 的解析结果。
 > 若消费方未取到新版本，用 `--refresh-dependencies` 或 bump `lib_version`。
@@ -213,7 +222,7 @@ CI 场景见 §4.4。
 | push tag `/^[0-9]/` | 创建/更新 GitHub Release，附件 = 两个平台的 jar |
 
 > tag 规则比消费方多一道守卫：版本号含 `-`（即快照）时**不打 tag**。
-> 否则 `1.0.0-SNAPSHOT.1` 会被 `%%-*` 截成 `1.0.0` 并自动打出正式 tag，把未定型的快照误标为发布。
+> 否则 `1.0.0-SNAPSHOT.2` 会被 `%%-*` 截成 `1.0.0` 并自动打出正式 tag，把未定型的快照误标为发布。
 
 **消费方 CI 依赖本库**：Astral Dice 的 `build.yml` 会先 checkout 本仓并
 `./gradlew publishToMavenLocal`，再构建自身——因为本库只在 mavenLocal 发布，CI 上无法直接解析。
@@ -224,7 +233,7 @@ CI 场景见 §4.4。
 ## 5. 目录内容
 
 ```
-common/src/main/java/com/merlinkitsune/starengine/     # 共享源码（35 个文件）
+common/src/main/java/com/merlinkitsune/starenginelib/  # 共享源码（35 个文件）
 ├── client/       ClientDamageNumbers, StarEngineConfigScreen
 │                 （后者隔离 Screen 引用，供平台侧注册配置 GUI）
 ├── component/    GameplayConfigValues, GameplayConstants
@@ -237,13 +246,13 @@ common/src/main/java/com/merlinkitsune/starengine/     # 共享源码（35 个�
 ├── item/         BossEntityUtil
 └── target/       TargetSelectionAction / TargetSelectionRegistry / TargetType
 
-neoforge-1.21.1/src/main/java/.../starengine/          # 平台专有（5 个文件）
+neoforge-1.21.1/src/main/java/.../starenginelib/       # 平台专有（5 个文件）
 ├── StarEngineLib          @Mod 入口
 ├── client/ActionBarManager        (DeltaTracker)
 ├── event/ModEffectRemoval         (Holder<MobEffect>)
 └── platform/LoaderEvent, LoaderTags
 
-forge-1.20.1/src/main/java/.../starengine/             # 平台专有（7 个文件）
+forge-1.20.1/src/main/java/.../starenginelib/          # 平台专有（7 个文件）
 ├── StarEngineLib          @Mod 入口
 ├── client/ActionBarManager        (float partialTick)
 ├── component/ItemDataKey
@@ -259,9 +268,15 @@ forge-1.20.1/src/main/java/.../starengine/             # 平台专有（7 个文
 
 ## 6. 版本与兼容
 
-- 库版本遵循 semver，`1.x` 内保持 API 兼容；消费方 `mods.toml` 声明 `versionRange="[1.0.0-SNAPSHOT,2.0)"`。
-  > 下界必须写到 `1.0.0-SNAPSHOT`：`[1.0,2.0)` 不含 `1.0.0-SNAPSHOT.x`（见 §4.2）。
-- 当前为 `1.0.0-SNAPSHOT.1`，SNAPSHOT 系列**不作**语义化兼容承诺；转正式 `1.0.0` 后再适用上一条。
+- 库版本遵循 semver，`1.x` 内保持 API 兼容；消费方 `mods.toml` 声明 `versionRange="[1.0.0-SNAPSHOT.2,2.0)"`。
+  > 下界必须写到 `1.0.0-SNAPSHOT`：`[1.0,2.0)` 不含任何快照版（见 §4.2）。
+  > 下界还要精确到当前快照序号（`.2`），否则改名前的旧库 jar 会被宽松区间接受，
+  > 而其旧包名会导致 `NoClassDefFoundError`（见 §4.2）。
+- 当前为 `1.0.0-SNAPSHOT.2`，SNAPSHOT 系列**不作**语义化兼容承诺；转正式 `1.0.0` 后再适用上一条。
+- **破坏性变更记录**：`1.0.0-SNAPSHOT.2` 将 Java 包名由 `com.merlinkitsune.starengine`
+  改为 `com.merlinkitsune.starenginelib`（maven group 同步改为 `com.merlinkitsune.starenginelib`）。
+  消费方所有 `import` 必须同步改写，且必须把区间下界提到 `[1.0.0-SNAPSHOT.2,...)`。
+  注意 `modId`（`starengine_lib`）**未**变更，故 `mods.toml` 的依赖声明与整合包文件名不受影响。
 - 共享源码中对 MC API 的使用受两侧编译期约束，破坏性变更会在**编译期**而非运行期暴露。
 
 ---
