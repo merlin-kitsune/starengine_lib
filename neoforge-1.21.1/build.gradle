@@ -1,0 +1,136 @@
+// StarEngine-Lib / NeoForge 1.21.1 平台子项目
+// Java 21 · Mojmap + Parchment · ModDevGradle 2.0.141 · 无需 refmap
+//
+// 源码 = 本子项目 src/main/java(平台专有) + ../../common/src/main/java(共享)
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'net.neoforged.moddev' version '2.0.141'
+    id 'idea'
+}
+
+// maven 坐标版本:纯 semver,不含 + 构建元数据(文件名后缀由 archivesName 承担)
+version = lib_version
+group = mod_group_id
+
+base {
+    archivesName = 'starengine_lib-neoforge-1.21.1'
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+// === 共享源码目录 ===
+// common 不是 Gradle 子项目,而是被两个平台各自编译一次的源码目录。
+// 因此 common 源码只能使用两版 MC 都存在且签名一致的 API,且不得使用 Java 21 独有语法
+// (Java 17 侧也要编译同一份)。
+sourceSets.main.java.srcDir(project.file('../common/src/main/java'))
+
+repositories {
+    mavenCentral()
+    maven { url = uri('https://maven.neoforged.net/releases') }
+}
+
+neoForge {
+    version = project.neo_version
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+
+    // 本库不注册任何东西,也没有 mixin / AT;runs 留空,库由消费方 mod 的 run 加载。
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+// 展开 mods.toml 模板中的 ${} 占位符
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from "src/main/templates"
+    into "build/generated/sources/modMetadata"
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            // 显式坐标:默认 artifactId 会退化为子项目名(neoforge-1.21.1),
+            // 与 archivesName 不一致会造成消费方书写困惑,故显式指定。
+            artifactId = 'starengine_lib-neoforge-1.21.1'
+            from components.java
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    // 注意:此处**不能**设 options.release = 17。
+    // MC 1.21.1 / NeoForge 21.1 的类文件版本为 65(Java 21),--release 17 会因
+    // "class file has wrong version 65.0, should be 61.0" 直接编译失败;
+    // 且 NeoForge 1.21.1 要求 mod 目标为 Java 21。
+    // common 源码「禁用 Java 21 独有语法」是由 forge-1.20.1 侧(Java 17 工具链)编译同一份源码来强制的。
+}
+
+// === 编译产物部署 ===
+// 本库是消费方 astral_dice 的必需前置(mods.toml type="required")。
+// 消费方 build 会自动把自身 jar 推送进整合包;库若不在同一时机进入整合包,
+// 整合包会因「缺失必需前置」直接拒绝启动。故库的 build 也默认推送。
+// NeoForge 编译与生产同为 Mojmap,直接推 build/libs 的普通 jar。
+def packModsDir = file('D:/.minecraft/versions/狐の航空学 Voxy Edition/mods')
+def jarArchiveProvider = tasks.named('jar').flatMap { it.archiveFile }
+
+tasks.register('pushToPack') {
+    group = 'build'
+    description = 'Copy the built jar into the NeoForge pack mods folder, removing stale versions.'
+    dependsOn tasks.named('jar')
+    doLast {
+        def jarFile = jarArchiveProvider.get().asFile
+        if (!jarFile.exists()) {
+            logger.warn("pushToPack: built jar not found, skipped: ${jarFile}")
+            return
+        }
+        if (!packModsDir.exists()) {
+            def packRoot = packModsDir.getParentFile()
+            if (packRoot == null || !packRoot.exists()) {
+                logger.warn("pushToPack: pack dir not found, skipped: ${packModsDir}")
+                return
+            }
+            packModsDir.mkdirs()
+        }
+        def stale = packModsDir.listFiles().findAll { File f ->
+            f.isFile() && f.name.startsWith('starengine_lib-') && f.name.endsWith('.jar')
+        }
+        stale.each { it.delete() }
+        def target = new File(packModsDir, jarFile.name)
+        target.withOutputStream { out ->
+            jarFile.withInputStream { inp -> inp.transferTo(out) }
+        }
+        logger.lifecycle("pushToPack: pushed ${jarFile.name} -> ${packModsDir}")
+    }
+}
+
+tasks.named('build') {
+    finalizedBy tasks.named('pushToPack')
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}

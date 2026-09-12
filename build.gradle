@@ -1,0 +1,16 @@
+// 根项目:仅提供聚合入口,不参与编译。
+// 子项目各自自包含(build.gradle / gradle.properties / src),共享 common/src/main/java。
+plugins {
+    id 'base'
+}
+
+tasks.named('wrapper', Wrapper).configure {
+    distributionType = Wrapper.DistributionType.BIN
+}
+
+// 构建:
+//   ./gradlew build                      # 同时构建两个平台
+//   ./gradlew :neoforge-1.21.1:build     # 仅 1.21.1 NeoForge
+//   ./gradlew :forge-1.20.1:build        # 仅 1.20.1 Forge
+// 发布到本地 maven(供 astral_dice 等消费方 modImplementation 引用):
+//   ./gradlew publishToMavenLocal

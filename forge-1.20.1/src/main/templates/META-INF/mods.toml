@@ -1,0 +1,39 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+authors="MerlinKitsune, Nintyfive95"
+description='''
+StarEngine 星引擎 —— Astral Dice(星之骰戏)系列模组共用的引擎库。
+
+本库不注册任何注册表条目(物品/效果/附件/数据组件/能力全部留在消费方 mod),
+因此搬迁不会改变任何 ResourceLocation 归属,不破坏存档与数据包。
+
+共享源码位于仓库 common/ 目录,由 1.20.1 与 1.21.1 两个平台各自编译一次。
+'''
+
+[[dependencies.${mod_id}]]
+    modId="forge"
+    mandatory=true
+    versionRange="${loader_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+# Curios 5.x:item/CuriosCompat(1.20.1 适配器)需要
+[[dependencies.${mod_id}]]
+    modId="curios"
+    mandatory=true
+    versionRange="[5,6)"
+    ordering="AFTER"
+    side="BOTH"

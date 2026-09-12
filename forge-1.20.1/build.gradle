@@ -1,0 +1,136 @@
+// StarEngine-Lib / Forge 1.20.1 平台子项目
+// Java 17 · Mojmap + Parchment(构建期 reobf 为 SRG)· ModDevGradle Legacy 2.0.144
+//
+// 源码 = 本子项目 src/main/java(平台专有) + ../../common/src/main/java(共享)
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'net.neoforged.moddev.legacyforge' version '2.0.144'
+    id 'idea'
+}
+
+version = lib_version
+group = mod_group_id
+
+base {
+    archivesName = 'starengine_lib-forge-1.20.1'
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+// === 共享源码目录(与 NeoForge 侧同一份) ===
+sourceSets.main.java.srcDir(project.file('../common/src/main/java'))
+
+repositories {
+    mavenCentral()
+    maven { url = uri('https://maven.neoforged.net/releases') }
+    // Curios 1.20.1 来自 Modrinth maven(供 item/CuriosCompat 使用)
+    maven { url 'https://api.modrinth.com/maven' }
+}
+
+legacyForge {
+    version = project.forge_version
+
+    parchment {
+        minecraftVersion = project.parchment_minecraft_version
+        mappingsVersion = project.parchment_mappings_version
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+dependencies {
+    // Curios API(1.20.1 Forge = Curios 5.x)。
+    // 仅 item/CuriosCompat 需要;由消费方 mod 声明为必需前置,故此处按实现依赖引入。
+    modImplementation "maven.modrinth:curios:IPQlZkz1"
+}
+
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            forge_version          : forge_version,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from "src/main/templates"
+    into "build/generated/sources/modMetadata"
+}
+sourceSets.main.resources.srcDir generateModMetadata
+legacyForge.ideSyncTask generateModMetadata
+
+// === 发布 ===
+// 关键:Forge 1.20.1 消费方(MDG legacyforge)通过 modImplementation 引入库时,
+// 会把「生产 SRG jar」重映射为 dev Mojmap 命名。因此本地 maven 必须发布 reobfJar
+// (build/libs 下的 SRG 重混淆产物),而不是 build/devlibs 下未重混淆的 dev jar。
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            // 显式坐标:默认 artifactId 会退化为子项目名(forge-1.20.1)。
+            artifactId = 'starengine_lib-forge-1.20.1'
+            artifact tasks.named('reobfJar')
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+// === 编译产物部署 ===
+// 本库是消费方 astral_dice 的必需前置(mods.toml mandatory=true)。
+// 消费方 build 会自动把自身 jar 推送进整合包;库若不在同一时机进入整合包,
+// 整合包会因「缺失必需前置」直接拒绝启动。故库的 build 也默认推送。
+// 约定与消费方一致:推送 reobfJar(SRG 生产 jar),旧版清理按 starengine_lib- 前缀。
+def packModsDir = file('D:/.minecraft/versions/1.20.1 模组测试/mods')
+def prodJarArchiveProvider = tasks.named('reobfJar').flatMap { it.archiveFile }
+
+tasks.register('pushToPack') {
+    group = 'build'
+    description = 'Copy the built production (SRG) jar into the Forge test pack mods folder, removing stale versions.'
+    dependsOn tasks.named('reobfJar')
+    doLast {
+        def jarFile = prodJarArchiveProvider.get().asFile
+        if (!jarFile.exists()) {
+            logger.warn("pushToPack: built jar not found, skipped: ${jarFile}")
+            return
+        }
+        if (!packModsDir.exists()) {
+            def packRoot = packModsDir.getParentFile()
+            if (packRoot == null || !packRoot.exists()) {
+                logger.warn("pushToPack: pack dir not found, skipped: ${packModsDir}")
+                return
+            }
+            packModsDir.mkdirs()
+        }
+        def stale = packModsDir.listFiles().findAll { File f ->
+            f.isFile() && f.name.startsWith('starengine_lib-') && f.name.endsWith('.jar')
+        }
+        stale.each { it.delete() }
+        def target = new File(packModsDir, jarFile.name)
+        target.withOutputStream { out ->
+            jarFile.withInputStream { inp -> inp.transferTo(out) }
+        }
+        logger.lifecycle("pushToPack: pushed ${jarFile.name} -> ${packModsDir}")
+    }
+}
+
+tasks.named('build') {
+    finalizedBy tasks.named('pushToPack')
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}
