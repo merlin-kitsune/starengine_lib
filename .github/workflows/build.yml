@@ -1,0 +1,106 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      # 发布规范:tag 使用不含后缀的基础版本号(如 1.0.0),禁止 v 前缀与 +加载器后缀
+      - '[0-9]*'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup JDK 21 (1.21.1 NeoForge)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup JDK 17 (1.20.1 Forge)
+        # common/src/main/java 会被两个平台各编译一次,Java 17 侧用于强制
+        # 「共享源码不得使用 Java 21 独有语法」这一约束,故 17 必须存在。
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build with Gradle (both targets)
+        # 两侧产物:neoforge-1.21.1/build/libs 普通 jar(Mojmap,无需重映射)
+        #           forge-1.20.1/build/libs    reobfJar(生产 SRG jar)
+        # 说明:各平台 build 末尾挂了 pushToPack(把 jar 推进本机整合包 mods 目录),
+        # 该任务在找不到整合包目录时会自行 warn+skip,CI 上无副作用。
+        run: ./gradlew build
+
+      - name: Upload StarEngine Lib JARs
+        uses: actions/upload-artifact@v4
+        with:
+          name: starengine_lib-jars
+          path: |
+            neoforge-1.21.1/build/libs/starengine_lib-*.jar
+            forge-1.20.1/build/libs/starengine_lib-*.jar
+
+      - name: Read lib version
+        id: version
+        run: |
+          VERSION=$(grep '^lib_version=' neoforge-1.21.1/gradle.properties | cut -d'=' -f2)
+          BASE=${VERSION%%-*}
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Create Git tag (main push only, stable versions only)
+        # 仅在 main 分支自动打 tag:tag = 基础版本号(去掉 -SNAPSHOT.x/-rc/-pre 与 +后缀),如 1.0.0。
+        # 与消费方 astral_dice 的规则相比多一道守卫:版本号含 '-' 时(即快照版本)不打 tag
+        # ——否则 push main 会因为 1.0.0-SNAPSHOT.1 而自动产出 tag "1.0.0",
+        # 把尚未定型的快照误标为正式发布,且 tag 难以回收。
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ "$VERSION" == *-* ]]; then
+            echo "Version $VERSION is a pre-release/snapshot (contains '-'), skip auto tagging"
+            exit 0
+          fi
+          TAG="${{ steps.version.outputs.base }}"
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "Tag $TAG already exists"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$TAG" -m "Release $TAG"
+            git push origin "$TAG"
+          fi
+
+      - name: Create/Update GitHub Release (tag push only, both JARs)
+        # 打 tag(如 1.0.0)后自动发布:附件 = 1.21.1 与 1.20.1 两个 jar。
+        # 本库是消费方 astral_dice 的必需前置,玩家需同时下载本仓 Release 的两个 jar
+        # 与 astral_dice 的 Release 才能启动。
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          BUILT="${{ steps.version.outputs.version }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "StarEngine Lib $TAG" --notes "StarEngine Lib $TAG — 1.21.1 (NeoForge) + 1.20.1 (Forge); build version $BUILT"
+          else
+            gh release create "$TAG" \
+              neoforge-1.21.1/build/libs/starengine_lib-*.jar \
+              forge-1.20.1/build/libs/starengine_lib-*.jar \
+              --title "StarEngine Lib $TAG" \
+              --notes "StarEngine Lib $TAG — 1.21.1 (NeoForge) + 1.20.1 (Forge); build version $BUILT" \
+              --latest
+          fi
