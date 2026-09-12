@@ -100,14 +100,72 @@ tasks.withType(JavaCompile).configureEach {
 // 消费方 build 会自动把自身 jar 推送进整合包;库若不在同一时机进入整合包,
 // 整合包会因「缺失必需前置」直接拒绝启动。故库的 build 也默认推送。
 // 约定与消费方一致:推送 reobfJar(SRG 生产 jar),旧版清理按 starengine_lib- 前缀。
+//
+// ⚠️ 约定(2026-09-12):**不在开发分支上推送整合包。**
+//   本库与消费方 astral_dice 必须**成对匹配**才能进整合包:
+//   消费方在编译期锁定库版本(starengine_lib_version),并在 mods.toml 声明库版本区间;
+//   库 jar 与 mod jar 只要一侧先单独演进,整合包就会进入"不匹配"状态,
+//   表现为启动期 NoClassDefFoundError(包名/类名对不上)或「缺必需前置」。
+//   消费方已在 multi-dev-next 上停推整合包,故**本库同步停推**(main 列入下方黑名单),
+//   让整合包整体冻结在最后一个匹配的版本组合上,而不是被单侧覆盖。
+//   判定依据是当前 git 分支(读 .git/HEAD,兼容普通仓库与 worktree):
+//     · 分支在 noPackPushBranches 中 → 跳过 pushToPack,只打日志,不算失败
+//     · 无法确定分支(detached HEAD/无 .git,如 CI) → 同样跳过(取安全侧)
+//     · 传 -PdeployToPack 或 -PpackPush → 强制推送(手动出包用;务必与消费方成对推送)
+//   恢复自动推送:把分支从 noPackPushBranches 移除。
 def packModsDir = file('D:/.minecraft/versions/1.20.1 模组测试/mods')
 def prodJarArchiveProvider = tasks.named('reobfJar').flatMap { it.archiveFile }
 
+// --- 整合包推送的 git 分支守卫(配合上方约定) ---
+// 分支判定放在**执行期**(见 pushToPack 的 doLast),不做配置期求值:
+//   ① 每次构建都读当时的 .git/HEAD,切分支后立即生效,不存在配置缓存陈旧问题;
+//   ② 不把 Provider/闭包塞进 configuration-cache,避免缓存序列化限制与行为漂移。
+// dotGitEntry 是配置期算好的 File(可序列化),执行期读它即可 —— 普通仓库这里就是
+// .git 目录;worktree 下它是**文件**,内容为 `gitdir: <path>`,真正的 HEAD 在 gitdir 下。
+def noPackPushBranches = ['main']
+def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')
+def dotGitEntry = rootProject.file('.git')
+
 tasks.register('pushToPack') {
     group = 'build'
-    description = 'Copy the built production (SRG) jar into the Forge test pack mods folder, removing stale versions.'
+    description = 'Copy the built production (SRG) jar into the Forge test pack mods folder, removing stale versions. Skipped on development branches; force with -PdeployToPack.'
     dependsOn tasks.named('reobfJar')
     doLast {
+        // --- 约定:开发分支不推送整合包(见文件顶部「编译产物部署」) ---
+        if (!forcePackPush) {
+            // 执行期读取当前分支:普通仓库 .git 是目录;worktree 的 .git 是文件,内容记录 gitdir
+            def readGitBranch = { File dotGit ->
+                File headFile = null
+                if (dotGit.isDirectory()) {
+                    def hf = new File(dotGit, 'HEAD')
+                    headFile = hf.isFile() ? hf : null
+                } else if (dotGit.isFile()) {
+                    def m = dotGit.text.trim() =~ /^gitdir:\s*(.+)$/
+                    if (m.find()) {
+                        def gd = new File(m.group(1).trim())
+                        if (!gd.isAbsolute()) {
+                            gd = new File(dotGit.parentFile, m.group(1).trim())
+                        }
+                        def hf = new File(gd, 'HEAD')
+                        headFile = hf.isFile() ? hf : null
+                    }
+                }
+                if (headFile == null) {
+                    return ''
+                }
+                def s = headFile.text.trim()
+                s.startsWith('ref: refs/heads/') ? s.substring('ref: refs/heads/'.length()) : ''
+            }
+            def branch = readGitBranch(dotGitEntry)
+            if (branch.isEmpty()) {
+                logger.lifecycle('pushToPack: skipped — 无法确定当前 git 分支(detached HEAD 或无 .git);如需强制推送请加 -PdeployToPack')
+                return
+            }
+            if (noPackPushBranches.contains(branch)) {
+                logger.lifecycle("pushToPack: skipped — 分支 '${branch}' 按约定不推送整合包;如需强制推送请加 -PdeployToPack")
+                return
+            }
+        }
         def jarFile = prodJarArchiveProvider.get().asFile
         if (!jarFile.exists()) {
             logger.warn("pushToPack: built jar not found, skipped: ${jarFile}")
