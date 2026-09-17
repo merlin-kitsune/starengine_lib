@@ -9,7 +9,7 @@ import java.util.concurrent.ThreadLocalRandom;
  *
  * 功能:
  * - 远程/魔法攻击命中时同样触发战斗骰(d1-6)并追加骰点伤害
- *   (经 {@link com.merlinkitsune.astral_dice.combat.SpellDamageRegistry} 注册为法伤修饰器,
+ *   (经消费方 mod 的法伤注册表(SpellDamageRegistry)注册为法伤修饰器,
  *   不触发骰神赐福、不消耗卡牌耐久);
  * - 紫晶骰子本身没有点数偏向,掷骰为均匀分布(1-6)。
  */

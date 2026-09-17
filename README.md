@@ -121,9 +121,9 @@ GameplayConstants.applyConfig(GameplayConfigValues)   → @Mod 构造期注册�
 
 | 平台 | 坐标 | 发布产物 |
 |---|---|---|
-| NeoForge 1.21.1 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.3` | `jar`（NeoForge 编译与生产同为 Mojmap，无需重映射） |
-| Forge 1.20.1 | `com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.3` | `reobfJar`（**生产 SRG jar**） |
-| NeoForge 26.1.2 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.0-SNAPSHOT.3` | `jar`（与 1.21.1 同理，Mojmap 无需重映射） |
+| NeoForge 1.21.1 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.4` | `jar`（NeoForge 编译与生产同为 Mojmap，无需重映射） |
+| Forge 1.20.1 | `com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.4` | `reobfJar`（**生产 SRG jar**） |
+| NeoForge 26.1.2 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.0-SNAPSHOT.4` | `jar`（与 1.21.1 同理，Mojmap 无需重映射） |
 
 > 三侧版本号**同号**，升级时三个 `gradle.properties` 必须一起改。
 
@@ -136,19 +136,19 @@ GameplayConstants.applyConfig(GameplayConfigValues)   → @Mod 构造期注册�
 // NeoForge 1.21.1
 repositories { mavenLocal() }
 dependencies {
-    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.3"
+    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.4"
 }
 
 // Forge 1.20.1
 repositories { mavenLocal() }
 dependencies {
-    modImplementation "com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.3"
+    modImplementation "com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.4"
 }
 
 // NeoForge 26.1.2
 repositories { mavenLocal() }
 dependencies {
-    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.0-SNAPSHOT.3"
+    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.0-SNAPSHOT.4"
 }
 ```
 
@@ -162,7 +162,7 @@ CI 场景见 §4.4。
 [[dependencies.<mod_id>]]
     modId="starengine_lib"
     type="required"        # 1.20.1 Forge 用 mandatory=true
-    versionRange="[1.0.0-SNAPSHOT.3,2.0)"
+    versionRange="[1.0.0-SNAPSHOT.4,2.0)"
     ordering="AFTER"
     side="BOTH"
 ```
@@ -171,18 +171,19 @@ CI 场景见 §4.4。
 > `1.0.0-SNAPSHOT.x < 1.0`（预发布限定符排在正式版本之前），因此 `[1.0,2.0)` **不含**任何
 > 快照版本——游戏会以「缺失/不满足必需前置」拒绝加载。
 >
-> ⚠️ **下界要精确到当前快照序号（如 `.2`）**，不要停在 `[1.0.0-SNAPSHOT,2.0)`。
+> ⚠️ **下界要精确到当前快照序号（如 `.4`）**，不要停在 `[1.0.0-SNAPSHOT,2.0)`。
 > 宽松区间会把**改名前的旧库 jar** 一并接受——它 `modId` 相同、版本号也可能相同，
 > 但带的是旧包名 `com.merlinkitsune.starengine`，加载后必然 `NoClassDefFoundError` 崩溃。
 > 收紧区间可把这种错配变成加载器层面的「缺必需前置」明确报错。
 >
 > 实测（`maven-artifact` 3.8.5，两侧加载器均走 `MavenVersionAdapter.createFromVersionSpec`）：
 >
-> | 区间 | `.1`（改名前） | `.2` | `.3` | `.10` | `1.0.0` | `1.1.0` | `2.0.0` |
-> |---|---|---|---|---|---|---|---|
-> | `[1.0,2.0)` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
-> | `[1.0.0-SNAPSHOT,2.0)` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-> | `[1.0.0-SNAPSHOT.2,2.0)` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+> | 区间 | `.1`（改名前） | `.2` | `.3` | `.4` | `.10` | `1.0.0` | `1.1.0` | `2.0.0` |
+> |---|---|---|---|---|---|---|---|---|
+> | `[1.0,2.0)` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
+> | `[1.0.0-SNAPSHOT,2.0)` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+> | `[1.0.0-SNAPSHOT.2,2.0)` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+> | `[1.0.0-SNAPSHOT.4,2.0)` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
 >
 > （注：`.10` 一列验证序号按数值而非字典序比较。）
 
@@ -228,10 +229,10 @@ CI 场景见 §4.4。
 ## 5. 目录内容
 
 ```
-common/src/main/java/com/merlinkitsune/starenginelib/  # 共享源码（28 个文件）
+common/src/main/java/com/merlinkitsune/starenginelib/  # 共享源码（32 个文件）
 ├── client/       ClientDamageNumbers
 ├── component/    GameplayConfigValues（配置值快照）, GameplayConstants
-├── effect/       18 个 MobEffect 实现
+├── effect/       19 个 MobEffect 实现（含 1.0.0-SNAPSHOT.4 新下沉的 ReadyEffect）
 ├── event/        EventTargetCollector
 │                 AmethystDiceHandler / SignActiveTriggeredEvent
 ├── item/         BossEntityUtil
@@ -265,11 +266,18 @@ neoforge-26.1.2/src/main/java/.../starenginelib/       # 平台专有（5 个文
 
 ## 6. 版本与兼容
 
-- 库版本遵循 semver，`1.x` 内保持 API 兼容；消费方 `mods.toml` 声明 `versionRange="[1.0.0-SNAPSHOT.3,2.0)"`。
+- 库版本遵循 semver，`1.x` 内保持 API 兼容；消费方 `mods.toml` 声明 `versionRange="[1.0.0-SNAPSHOT.4,2.0)"`。
   > 下界必须写到 `1.0.0-SNAPSHOT`：`[1.0,2.0)` 不含任何快照版（见 §4.2）。
-  > 下界还要精确到当前快照序号（`.3`），否则更早的旧库 jar（改名前的 `.1`、含已删除配置类的 `.2`）
-  > 会被宽松区间接受，分别表现为 `NoClassDefFoundError` 与编译期 `找不到符号`（见 §4.2）。
-- 当前为 `1.0.0-SNAPSHOT.3`，SNAPSHOT 系列**不作**语义化兼容承诺；转正式 `1.0.0` 后再适用上一条。
+  > 下界还要精确到当前快照序号（`.4`），否则更早的旧库 jar（改名前的 `.1`、含已删除配置类的 `.2`、
+  > 缺 `ReadyEffect` 的 `.3`）会被宽松区间接受，分别表现为 `NoClassDefFoundError` 与编译期 `找不到符号`（见 §4.2）。
+- 当前为 `1.0.0-SNAPSHOT.4`，SNAPSHOT 系列**不作**语义化兼容承诺；转正式 `1.0.0` 后再适用上一条。
+- **下沉记录（Phase 1d）**：`1.0.0-SNAPSHOT.4` 把 `common/effect/ReadyEffect` 收进本库 —— 它是三线
+  （`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`）字节完全一致、且只依赖 MC API 与库内已有类的
+  **自包含单元中唯一尚未进库者**；其余 52 个同源候选的排除理由（非三线一致 / 依赖消费方专有类 / mixin）
+  逐条记录在 `temp/sink-manifest-20260917.md`。同次核对确认：主线在 dev-next 删除这批类之后对
+  `GameplayConstants` / `EventTargetCollector` 等副本的改动**未被丢失**（库内副本已取主线的常量值，
+  过渡符号按既有约定暂留），`BossEntityUtil` / `SignActiveTriggeredEvent` / `ModEffectRemoval` /
+  `ActionBarManager` 的差异全部是 shim 与注释，属有意设计。
 - **新平台记录**：`1.0.0-SNAPSHOT.3` 新增 **`neoforge-26.1.2`** 平台子项目（MC 26.1.2 / NeoForge
   26.1.2.109 / Java 25 / ModDevGradle 2.0.147 / 无 Parchment），使 `common` 由「两版同源」变为
   「**三版同源**」。为此把两处 26.1 平台差异下沉进 shim：标识符类 `ResourceLocation` → `Identifier`、
@@ -277,6 +285,10 @@ neoforge-26.1.2/src/main/java/.../starenginelib/       # 平台专有（5 个文
   （后者由 `platform/LoaderTags#isBoss(Entity)` 吸收，共享源码不知情）。唯一无法同源的是
   `common/event/AstralEventType`（record 组件类型直接用旧名，Java 无类型别名），故该文件被
   `sourceSets.main.java.exclude` 排除在 26.1.2 之外 —— 它与其同族在消费方主线已删除，本库合并后即删。
+- **变更记录**：`1.0.0-SNAPSHOT.4` 只**新增**类（`effect/ReadyEffect`），不删类、不改签名 ——
+  但对「按 `.4` 编译的消费方」它是**加载期必需前置**：运行环境里若仍是 `.3` 的库 jar，会在加载期以
+  `NoClassDefFoundError: com/merlinkitsune/starenginelib/effect/ReadyEffect` 崩溃，故消费方必须把区间
+  下界抬到 `[1.0.0-SNAPSHOT.4,2.0)`；反向（用 `.3` 编译、环境为 `.4`）保持兼容。
 - **破坏性变更记录**：`1.0.0-SNAPSHOT.3` 完全移除 Cloth Config 前置与库内公共配置模块
   （`StarEngineCommonConfig` / `StarEngineConfigs` / `LegacyCommonTomlImporter` / `StarEngineConfigScreen`），
   并把 `GameplayConfigValues` 由 13 字段收敛为 6 字段、`GameplayConstants.refresh()` 改为

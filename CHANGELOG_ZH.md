@@ -3,7 +3,23 @@
 > 本文件仅收录中文更新日志；英文版见 [`CHANGELOG.md`](CHANGELOG.md)。
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 
-## 未发布（1.0.0-SNAPSHOT.3）
+## 未发布（1.0.0-SNAPSHOT.4）
+
+> 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
+> 版本号说明：`.4` 是 `.3` 的**续接**而非重做 —— 库内容只**新增**了 `common/effect/ReadyEffect`。必须 bump 的原因与 `.3` 相同：该版本号不以 `-SNAPSHOT` 结尾（按 Maven 语义属普通版本），Gradle 不会把它当作 changing module，不 bump 则消费方会继续解析 `mavenLocal` 里的 `.3` 旧 jar（缺该类 → 编译期报「找不到符号」）。`.3` 的条目原样保留在下一节。
+
+### 新内容
+
+- **`effect/ReadyEffect` 下沉进库**：该类在三线（`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`）各有一份且**字节完全一致**，只 import 原版 `MobEffect` / `MobEffectCategory`，不引用任何消费方专有类 —— 是本轮按「三线字节一致 + 自包含」口径筛出的 53 个候选里**唯一尚未进库**者（其余 52 个已在前序 Phase 下沉或按原因排除，见「工程」）。下沉后位于 `common/src/main/java/com/merlinkitsune/starenginelib/effect/ReadyEffect.java`（14 行 / 540 字节），与原文件逐字节相同、仅 `package` 一行改为库包名，行尾保持 CRLF 不变。
+
+### 工程
+
+- **三线共享类的下沉判定口径固化**（清单：`temp/sink-manifest-20260917.md`）：候选闸门 = 「三个子项目同相对路径的 java 文件 Sha256 完全相同」（三线共 229 个 java 文件 → 候选 53 个）；自包含闸门 = 「引用闭包只落在候选集 ∪ 库内已有类 ∪ Minecraft/加载器 API」。排除项逐条列明并给出原因：非三线一致（176 个）、依赖消费方专有类（如 `ModItems` / `ModAttachments` / `BaseChipItem` / `DiceCombatModifiers` / `SpellDamageRegistry`）、以及 3 个 mixin（`mixin/trade/Merchant{Container,Menu,ResultSlot}Mixin`，需要 mixin 配置与 refmap，库内无此基建）。
+- **合并前漂移核对（本次据此判定「不需再改这些类」）**：dev-next 已删除、而主线在删除之后又改过的库同源副本逐条比对 —— `component/GameplayConstants` 的常量改动（`MAX_MARKER` 16→32、`HAND_FAN_BIG_RANGE` 转 `final`、`MAX_STARLIGHT`/`EFFECT_CARD_COOLDOWN_SECONDS`/`MAX_EFFECT_STACKS` 转 `final` 等）库内**已取主线值**，两侧差异只剩「库用值快照 seam、主线用 `ModCommonConfig`」与按既有约定暂留的过渡符号（`EVENT_RANGE` / `EVENT_APPLY_MAID` / `KOMACHI_EXTRA_PLAYS_CAP` / `TARGET_SELECT_RADIUS`）；`event/EventTargetCollector` 库内**暂留全量实现**（合并前消费方仍在调用 `collectTargets(...)`）；`item/BossEntityUtil`、`event/SignActiveTriggeredEvent`、`event/ModEffectRemoval`、`client/ActionBarManager`（三个平台各一份）的差异全部是 shim 基类与注释。⇒ 主线这批改动不会在合并中丢失。
+- **`common` 内两处消费方包名残留已清除**：`effect/HealingEffect` 与 `event/AmethystDiceHandler` 的 javadoc 里还留着 `{@link com.merlinkitsune.astral_dice.item.HealingManager}` 与 `{@link com.merlinkitsune.astral_dice.combat.SpellDamageRegistry}` —— 上一轮的包名重构只把 `starengine` 段换成 `starenginelib`，消费方包名被原样留下，不影响编译但违反「`common` 不得出现消费方专有类引用」的验收口径。改为纯文本描述，功能与签名零改动；清理后**全库（含三个平台子项目）对 `com.merlinkitsune.astral_dice` 的引用为 0**。
+- **消费方区间下界抬到 `1.0.0-SNAPSHOT.4`**：dev-next worktree 两个 `gradle.properties` 的 `starengine_lib_version` 与 `starengine_lib_version_range` 已同步，两侧 `mods.toml` 经 `${starengine_lib_version_range}` 展开后同为新区间。语义与 `.3` 同构（同为「精确下界」）：`[1.0.0-SNAPSHOT.4,2.0)` 拒绝 `.1` / `.2` / `.3`，接受 `.4` / `.10` / `1.0.0` / `1.1.0`，仍拒绝 `2.0.0`。
+
+## 1.0.0-SNAPSHOT.3
 
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 > 版本号说明：本库此前以 `1.1.0` 在本地构建（除 `mavenLocal` 外未发布到任何地方），为首次对外发布改号为 `1.0.0-SNAPSHOT.1`；随后改为 **`1.0.0-SNAPSHOT.2`** —— Java 包名发生重命名，而 `mod_version` 仍停在 `1.0.0`，只能靠 patch 段承载这次改名，否则依赖区间无从区分新旧 jar；现又改为 **`1.0.0-SNAPSHOT.3`** —— 完全移除 Cloth Config 前置与库内公共配置模块、把 `GameplayConfigValues` 由 13 字段收敛为 6 字段并删除事件框架死代码，同样是二进制不兼容变更，必须再占一个 patch 段才能让消费方摆脱 `mavenLocal` 里的 `.2` 旧 jar。又因 `1.0.0-SNAPSHOT.1` 与 `.2` 除 `mavenLocal` 外未进入任何仓库，三个版本号的条目在此合并为一份 `1.0.0-SNAPSHOT.3` 更新日志。
