@@ -49,11 +49,26 @@ dependencies {
     modImplementation "maven.modrinth:curios:IPQlZkz1"
 }
 
+// Forge 自身版本门槛(**单一来源 = gradle.properties 的 forge_version**,形如 1.20.1-47.4.10;
+// 口径与消费方 astral_dice_multiloader/forge-1.20.1/build.gradle:139-152 完全一致):
+//   · loaderVersion(模板第 2 行)= **语言区间** `[<major>,<major+1>)` —— javafml 语言提供者的版本号
+//     就是 Forge 主系列号(47),与完整版本号不同构;写 `[47.4.10,48)` 会被 FML 以
+//     `fml.language.missingversion` 直接拒载整个库 jar(同本库 1.21.1 侧 2026-09-17 的拒载事故)。
+//   · `modId="forge"` 强制依赖(模板第 22 行)= **精确区间** `[<forge_version>,<major+1>)`,由 FML
+//     在依赖排序阶段拒绝旧环境。
+// 因此该属性只承担「语言区间」,精确下限由下面派生出的 forge_version_range 承担。
+def forgeSemver = project.forge_version.toString().split('-').last()
+def forgeMajor = (forgeSemver.split('\\.')[0] as int)
+def forgeVersionRange = "[${forgeSemver},${forgeMajor + 1})"
+logger.lifecycle("forgeVersionRange: ${forgeVersionRange} (derived from forge_version=${forge_version}); " +
+        "loaderVersion=${loader_version_range}")
+
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
     var replaceProperties = [
             minecraft_version      : minecraft_version,
             minecraft_version_range: minecraft_version_range,
             forge_version          : forge_version,
+            forge_version_range    : forgeVersionRange,
             loader_version_range   : loader_version_range,
             mod_id                 : mod_id,
             mod_name               : mod_name,

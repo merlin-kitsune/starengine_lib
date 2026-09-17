@@ -3,7 +3,17 @@
 > 本文件仅收录中文更新日志；英文版见 [`CHANGELOG.md`](CHANGELOG.md)。
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 
-## 未发布（1.0.0-SNAPSHOT.5）
+## 未发布（1.0.0-SNAPSHOT.6）
+
+> 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
+> 版本号说明：`.6` 是**加载门槛修复**版本 —— 修掉「库自身被 FML 拒载」的根因，并把 forge 侧门槛对齐到已文档化口径。必须 bump 的原因同前几版：该版本号不以 `-SNAPSHOT` 结尾（按 Maven 语义属普通版本），Gradle 不把它当作 changing module —— 不 bump 则消费方会继续解析 `mavenLocal` 里那份**带错 `loaderVersion`、会被 FML 拒载**的 `.5` jar。
+
+### 工程
+
+- **修复：库自身被 FML 拒载（`loaderVersion` 误用 NeoForge 版本带）**。现象：消费方 `run/1.21.1` 连续两次启动在 FML 阶段崩溃（`crash-2026-09-17_20.41.28-fml.txt` / `…_20.42.17-fml.txt`），报 `Mod File …\starengine_lib-neoforge-1.21.1-1.0.0-SNAPSHOT.5.jar needs language provider javafml:21.1 or above, and below 21.2 to load / We have found 4.0.42`，随后消费方 `astral_dice` 被判 `requires starengine_lib 1.0.0-SNAPSHOT.5 or above … Currently, starengine_lib is not installed`。根因：`neoforge-1.21.1/gradle.properties` 的 `loader_version_range` 曾被写成 **NeoForge 版本带** `[21.1,21.2)`，而模板 `neoforge.mods.toml:2 loaderVersion="${loader_version_range}"` 比的是 **javafml 语言提供者版本**（本机 NeoForge 21.1.235 报 `4.0.42`）。处置：该属性改为语言区间 **`[1,)`**（与消费方 `astral_dice_multiloader-next/neoforge-1.21.1/gradle.properties:23` 同值）；NeoForge 版本带 `[21.1,21.2)` 仍由模板里 `modId="neoforge"` 依赖承担（**区间未变**）。`neoforge-26.1.2` 侧本来就是 `[1,)`（未触发拒载），本次不改其值。
+- **同批：`forge-1.20.1` 门槛对齐已文档化口径 + 三平台版本同步**。`loaderVersion` 由 `[47,)` 收敛为 **`[47,48)`**（javafml 语言提供者的版本号就是 Forge 主系列号 `47`，写完整版本号区间会被 FML 判 `fml.language.missingversion`），`modId="forge"` 依赖改用 `build.gradle` 从 `forge_version` **派生**的精确区间 **`[47.4.10,48)`**（模板占位由 `${loader_version_range}` 改为 `${forge_version_range}`），与消费方 `forge-1.20.1/build.gradle:139-152` 的口径逐条一致。三平台 `lib_version` / `mod_version` 由 `1.0.0-SNAPSHOT.5` → **`1.0.0-SNAPSHOT.6`**（后缀各自 `+neoforge_1.21.1` / `+forge_1.20.1` / `+neoforge_26.1.2`）并已 `publishToMavenLocal`（产物落在 `~/.m2/repository/com/merlinkitsune/starenginelib/<artifact>/1.0.0-SNAPSHOT.6/`）；开包断言三个 jar 的 `loaderVersion` 分别为 `[1,)` / `[47,48)` / `[1,)`、forge 依赖 `versionRange="[47.4.10,48)"`，`neoforge` / `minecraft` 依赖区间未变。**库内 Java 源码零改动**（只改元数据、模板注释与文档）；消费方引脚与 CI ref 由消费方侧同步，不在本次范围。
+
+## 1.0.0-SNAPSHOT.5
 
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 > 版本号说明：`.5` 是**合并收尾**版本 —— 主线（`multi-1.20.1-1.21.1` @ `8f68482`）已并入消费方 `multi-dev-next`，库侧据此按期删除「合并后即删」的过渡符号。必须 bump 的原因同 `.4`：该版本号不以 `-SNAPSHOT` 结尾（属普通版本），Gradle 不把它当作 changing module，不 bump 则消费方会继续解析 `mavenLocal` 里的 `.4` 旧 jar。

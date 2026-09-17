@@ -1,4 +1,12 @@
 modLoader="javafml"
+
+# 加载器(javafml 语言提供者)版本门槛 —— 该槽比的是 **FML 语言提供者的版本**(本机 NeoForge
+# 21.1.235 报 4.0.42),**不是** NeoForge 版本带;故只能写语言区间(= gradle.properties 的
+# loader_version_range,当前 [1,),与消费方同值)。
+# ⚠️ 2026-09-17 实测:此处若写成 NeoForge 版本带 [21.1,21.2),FML 会**直接拒载整个库 jar**
+#    ("needs language provider javafml:21.1 or above, and below 21.2 to load / We have found 4.0.42";
+#     崩溃报告见消费方 run/1.21.1/crash-reports/crash-2026-09-17_20.41.28-fml.txt)。
+# NeoForge 版本带属于下面 modId="neoforge" 依赖的 versionRange(那里比的是版本)。
 loaderVersion="${loader_version_range}"
 license="${mod_license}"
 
