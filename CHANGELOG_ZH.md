@@ -3,7 +3,18 @@
 > 本文件仅收录中文更新日志；英文版见 [`CHANGELOG.md`](CHANGELOG.md)。
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 
-## 未发布（1.0.0-SNAPSHOT.4）
+## 未发布（1.0.0-SNAPSHOT.5）
+
+> 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
+> 版本号说明：`.5` 是**合并收尾**版本 —— 主线（`multi-1.20.1-1.21.1` @ `8f68482`）已并入消费方 `multi-dev-next`，库侧据此按期删除「合并后即删」的过渡符号。必须 bump 的原因同 `.4`：该版本号不以 `-SNAPSHOT` 结尾（属普通版本），Gradle 不把它当作 changing module，不 bump 则消费方会继续解析 `mavenLocal` 里的 `.4` 旧 jar。
+
+### 工程
+
+- **过渡符号按期删除（已删部分）**：删除前**逐符号 grep 举证**合并后消费方三线（`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`）零引用，然后删除 ①`EventTargetCollector` 的 `collectTargets` / `collectTeamTargets` / `collectMaids` / `isMaidOwnedBy`（含其 `GameplayConstants.EVENT_RANGE` / `EVENT_APPLY_MAID` 分支）、②`GameplayConstants.KOMACHI_EXTRA_PLAYS_CAP`、③`effect/ReadyEffect`（`.4` 才下沉、合并后三线零引用）。判定要点：`collectTargets` 的 6 处 grep 命中全部是消费方 `RandomCardHandler` 自己的同名方法（不同类、不同签名），库侧方法确为 0 引用；`EVENT_APPLY_MC_TEAM` / `EVENT_APPLY_FTB_TEAM` / `EVENT_APPLY_OPAC` 与 `EventTargetCollector.collectTeamPlayers` 是**在用**能力（消费方多处调用），原样保留。命令与输出见 `temp/t5-cleanup-notes-20260917.md`。
+- **未删（阻塞，登记为待办）**：`event/AstralEventType` / `EventContext` / `EventEffect` 三件套，以及 `neoforge-26.1.2/build.gradle` 里专为 `AstralEventType` 加的 `sourceSets.main.java.exclude` 行，本轮**保留**。原因：合并后的消费方 `event/AstralEventSystem.java` 是「dev-next 的 import 块 + 主线的精简方法体」的合并产物，方法体虽已不用这两个类型，却仍留着 4 处指向本库的 `import`（`neoforge-1.21.1` 第 17/18 行、`forge-1.20.1` 第 15/16 行）—— Java 中未解析的 `import` **本身就是编译错误**，删除三件套会让两条消费线直接编译失败（`cannot find symbol`），也违反「不得留下悬空引用」。这 4 行属消费方 `src` 侧（本轮 scope 之外），清除后再随 `.6` 删除三件套与那行 exclude。⚠️ 纠正一处既有记录：`KNOWN-ISSUES` KI-M3.3 与本轮任务简报均称「合并后 0 引用」，那是只统计了类型**使用面**、漏掉 `import` 行的结果，本轮重新举证推翻了该结论。
+- **版本与消费方同步**：库版本 `1.0.0-SNAPSHOT.4 → 1.0.0-SNAPSHOT.5`（三个平台 `gradle.properties` 同号）；dev-next 两侧 `starengine_lib_version` 与 `starengine_lib_version_range`（两个 `mods.toml` 经 `${starengine_lib_version_range}` 展开）同步到 `[1.0.0-SNAPSHOT.5,2.0)`；消费方 CI 钉住的库检出 `ref` 换成 `.5` 对应的库提交 sha，并在注释里写明「库版本 bump 必须与本 ref 同一次提交更新」。⚠️ 库仓库目前**尚未 push**，该 sha 仅存在于本机，CI 检出会失败直到库被推送且该 sha 可达。
+
+## 1.0.0-SNAPSHOT.4
 
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 > 版本号说明：`.4` 是 `.3` 的**续接**而非重做 —— 库内容只**新增**了 `common/effect/ReadyEffect`。必须 bump 的原因与 `.3` 相同：该版本号不以 `-SNAPSHOT` 结尾（按 Maven 语义属普通版本），Gradle 不会把它当作 changing module，不 bump 则消费方会继续解析 `mavenLocal` 里的 `.3` 旧 jar（缺该类 → 编译期报「找不到符号」）。`.3` 的条目原样保留在下一节。

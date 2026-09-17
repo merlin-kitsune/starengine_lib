@@ -55,8 +55,13 @@ neoforge-26.1.2/            ← 平台子项目：Java 25 · Mojmap（无 Parchm
 
 > 最后一行的两处差异由 `platform/LoaderTags` 的 `isBoss(Entity)` 吸收，共享源码不感知。
 > 例外：`common/event/AstralEventType` 的 record 组件类型直接用 `ResourceLocation`，
-> 无类型别名可写，故 26.1.2 平台**不含**该文件（`sourceSets.main.java.exclude`）；
-> 该事件框架三件套在消费方主线已被删除，本库也只是暂留，合并后即删。
+> 无类型别名可写，故 26.1.2 平台**不含**该文件（`sourceSets.main.java.exclude`）。
+> ⚠️ **该 exclude 行截至 `1.0.0-SNAPSHOT.5` 仍然保留**：事件框架三件套（`AstralEventType` /
+> `EventContext` / `EventEffect`）本应在合并完成后删除，但合并后的消费方
+> `event/AstralEventSystem.java` 仍是「dev-next 的 import 块 + 主线的精简方法体」，
+> 留着 4 处指向本库的 import（`neoforge-1.21.1` 第 17/18 行、`forge-1.20.1` 第 15/16 行）——
+> Java 中未解析的 import 本身就是编译错误，故删除三件套会让消费方**编译失败**。
+> 待消费方 src 侧清掉这 4 行后，随下一个版本（`.6`）一并删除三件套与该 exclude 行。
 
 ---
 
@@ -121,9 +126,9 @@ GameplayConstants.applyConfig(GameplayConfigValues)   → @Mod 构造期注册�
 
 | 平台 | 坐标 | 发布产物 |
 |---|---|---|
-| NeoForge 1.21.1 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.4` | `jar`（NeoForge 编译与生产同为 Mojmap，无需重映射） |
-| Forge 1.20.1 | `com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.4` | `reobfJar`（**生产 SRG jar**） |
-| NeoForge 26.1.2 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.0-SNAPSHOT.4` | `jar`（与 1.21.1 同理，Mojmap 无需重映射） |
+| NeoForge 1.21.1 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.5` | `jar`（NeoForge 编译与生产同为 Mojmap，无需重映射） |
+| Forge 1.20.1 | `com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.5` | `reobfJar`（**生产 SRG jar**） |
+| NeoForge 26.1.2 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.0-SNAPSHOT.5` | `jar`（与 1.21.1 同理，Mojmap 无需重映射） |
 
 > 三侧版本号**同号**，升级时三个 `gradle.properties` 必须一起改。
 
@@ -136,19 +141,19 @@ GameplayConstants.applyConfig(GameplayConfigValues)   → @Mod 构造期注册�
 // NeoForge 1.21.1
 repositories { mavenLocal() }
 dependencies {
-    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.4"
+    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.5"
 }
 
 // Forge 1.20.1
 repositories { mavenLocal() }
 dependencies {
-    modImplementation "com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.4"
+    modImplementation "com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.5"
 }
 
 // NeoForge 26.1.2
 repositories { mavenLocal() }
 dependencies {
-    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.0-SNAPSHOT.4"
+    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.0-SNAPSHOT.5"
 }
 ```
 
@@ -162,7 +167,7 @@ CI 场景见 §4.4。
 [[dependencies.<mod_id>]]
     modId="starengine_lib"
     type="required"        # 1.20.1 Forge 用 mandatory=true
-    versionRange="[1.0.0-SNAPSHOT.4,2.0)"
+    versionRange="[1.0.0-SNAPSHOT.5,2.0)"
     ordering="AFTER"
     side="BOTH"
 ```
@@ -171,19 +176,20 @@ CI 场景见 §4.4。
 > `1.0.0-SNAPSHOT.x < 1.0`（预发布限定符排在正式版本之前），因此 `[1.0,2.0)` **不含**任何
 > 快照版本——游戏会以「缺失/不满足必需前置」拒绝加载。
 >
-> ⚠️ **下界要精确到当前快照序号（如 `.4`）**，不要停在 `[1.0.0-SNAPSHOT,2.0)`。
+> ⚠️ **下界要精确到当前快照序号（如 `.5`）**，不要停在 `[1.0.0-SNAPSHOT,2.0)`。
 > 宽松区间会把**改名前的旧库 jar** 一并接受——它 `modId` 相同、版本号也可能相同，
 > 但带的是旧包名 `com.merlinkitsune.starengine`，加载后必然 `NoClassDefFoundError` 崩溃。
 > 收紧区间可把这种错配变成加载器层面的「缺必需前置」明确报错。
 >
 > 实测（`maven-artifact` 3.8.5，两侧加载器均走 `MavenVersionAdapter.createFromVersionSpec`）：
 >
-> | 区间 | `.1`（改名前） | `.2` | `.3` | `.4` | `.10` | `1.0.0` | `1.1.0` | `2.0.0` |
-> |---|---|---|---|---|---|---|---|---|
-> | `[1.0,2.0)` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
-> | `[1.0.0-SNAPSHOT,2.0)` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-> | `[1.0.0-SNAPSHOT.2,2.0)` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-> | `[1.0.0-SNAPSHOT.4,2.0)` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
+> | 区间 | `.1`（改名前） | `.2` | `.3` | `.4` | `.5` | `.10` | `1.0.0` | `1.1.0` | `2.0.0` |
+> |---|---|---|---|---|---|---|---|---|---|
+> | `[1.0,2.0)` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
+> | `[1.0.0-SNAPSHOT,2.0)` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+> | `[1.0.0-SNAPSHOT.2,2.0)` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+> | `[1.0.0-SNAPSHOT.4,2.0)` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+> | `[1.0.0-SNAPSHOT.5,2.0)` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
 >
 > （注：`.10` 一列验证序号按数值而非字典序比较。）
 
@@ -229,12 +235,13 @@ CI 场景见 §4.4。
 ## 5. 目录内容
 
 ```
-common/src/main/java/com/merlinkitsune/starenginelib/  # 共享源码（32 个文件）
+common/src/main/java/com/merlinkitsune/starenginelib/  # 共享源码（31 个文件）
 ├── client/       ClientDamageNumbers
 ├── component/    GameplayConfigValues（配置值快照）, GameplayConstants
-├── effect/       19 个 MobEffect 实现（含 1.0.0-SNAPSHOT.4 新下沉的 ReadyEffect）
-├── event/        EventTargetCollector
+├── effect/       18 个 MobEffect 实现（ReadyEffect 已于 1.0.0-SNAPSHOT.5 按期删除）
+├── event/        EventTargetCollector（1.0.0-SNAPSHOT.5 起只剩团队收集）
 │                 AmethystDiceHandler / SignActiveTriggeredEvent
+│                 ⚠️ AstralEventType / EventContext / EventEffect 三个过渡符号暂留（见 §1.3）
 ├── item/         BossEntityUtil
 └── target/       TargetSelectionAction / TargetSelectionRegistry / TargetType
 
@@ -266,11 +273,19 @@ neoforge-26.1.2/src/main/java/.../starenginelib/       # 平台专有（5 个文
 
 ## 6. 版本与兼容
 
-- 库版本遵循 semver，`1.x` 内保持 API 兼容；消费方 `mods.toml` 声明 `versionRange="[1.0.0-SNAPSHOT.4,2.0)"`。
+- 库版本遵循 semver，`1.x` 内保持 API 兼容；消费方 `mods.toml` 声明 `versionRange="[1.0.0-SNAPSHOT.5,2.0)"`。
   > 下界必须写到 `1.0.0-SNAPSHOT`：`[1.0,2.0)` 不含任何快照版（见 §4.2）。
-  > 下界还要精确到当前快照序号（`.4`），否则更早的旧库 jar（改名前的 `.1`、含已删除配置类的 `.2`、
-  > 缺 `ReadyEffect` 的 `.3`）会被宽松区间接受，分别表现为 `NoClassDefFoundError` 与编译期 `找不到符号`（见 §4.2）。
-- 当前为 `1.0.0-SNAPSHOT.4`，SNAPSHOT 系列**不作**语义化兼容承诺；转正式 `1.0.0` 后再适用上一条。
+  > 下界还要精确到当前快照序号（`.5`），否则更早的旧库 jar（改名前的 `.1`、含已删除配置类的 `.2`、
+  > 缺 `ReadyEffect` 的 `.3`、仍带已删过渡符号的 `.4`）会被宽松区间接受，分别表现为
+  > `NoClassDefFoundError` 与编译期 `找不到符号`（见 §4.2）。
+- 当前为 `1.0.0-SNAPSHOT.5`，SNAPSHOT 系列**不作**语义化兼容承诺；转正式 `1.0.0` 后再适用上一条。
+- **过渡符号清理记录（合并收尾）**：`1.0.0-SNAPSHOT.5` 在主线合并完成后按计划删除了
+  `EventTargetCollector.collectTargets` / `collectTeamTargets` / `collectMaids` / `isMaidOwnedBy`、
+  `GameplayConstants.EVENT_RANGE` / `EVENT_APPLY_MAID` / `KOMACHI_EXTRA_PLAYS_CAP`、以及 `effect/ReadyEffect`；
+  **删除前逐符号 grep 举证**合并后消费方三线零引用（唯一的 `collectTargets` 命中是消费方
+  `RandomCardHandler` 自己的同名方法）。**未删（阻塞）**：`event/AstralEventType` / `EventContext` /
+  `EventEffect` 三件套与 `neoforge-26.1.2/build.gradle` 的 exclude 行 —— 原因见 §1.3 与
+  `temp/t5-cleanup-notes-20260917.md`。
 - **下沉记录（Phase 1d）**：`1.0.0-SNAPSHOT.4` 把 `common/effect/ReadyEffect` 收进本库 —— 它是三线
   （`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`）字节完全一致、且只依赖 MC API 与库内已有类的
   **自包含单元中唯一尚未进库者**；其余 52 个同源候选的排除理由（非三线一致 / 依赖消费方专有类 / mixin）
@@ -293,8 +308,9 @@ neoforge-26.1.2/src/main/java/.../starenginelib/       # 平台专有（5 个文
   （`StarEngineCommonConfig` / `StarEngineConfigs` / `LegacyCommonTomlImporter` / `StarEngineConfigScreen`），
   并把 `GameplayConfigValues` 由 13 字段收敛为 6 字段、`GameplayConstants.refresh()` 改为
   `applyConfig(GameplayConfigValues)`；事件框架三件套（`AstralEventType` / `EventContext` / `EventEffect`）
-  与 `KOMACHI_EXTRA_PLAYS_CAP` 等「合并后即删」的过渡符号**暂留**（尚未合并主线的消费方仍在引用，
-  删掉会让本轮提交无法构建）。消费方需回归自己的 TOML 配置
+  与 `KOMACHI_EXTRA_PLAYS_CAP` 等「合并后即删」的过渡符号曾**暂留**（当时尚未合并主线的消费方仍在引用，删掉会让那一轮提交无法构建）。
+  截至 `1.0.0-SNAPSHOT.5`：`KOMACHI_EXTRA_PLAYS_CAP` 已按期删除；三件套仍因消费方
+  `AstralEventSystem` 的 4 处遗留 import 阻塞保留（见 §1.3）。消费方需回归自己的 TOML 配置
   （`ModConfigSpec` / `ForgeConfigSpec`）并在配置加载后推送值快照（见 §3）。
   注意 `modId`（`starengine_lib`）**未**变更，故整合包文件名不受影响。
 - **破坏性变更记录**：`1.0.0-SNAPSHOT.2` 将 Java 包名由 `com.merlinkitsune.starengine`
