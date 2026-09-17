@@ -54,14 +54,11 @@ neoforge-26.1.2/            ← 平台子项目：Java 25 · Mojmap（无 Parchm
 | 实体 tag 判定 | `EntityType#is(TagKey)` | `EntityType#is(TagKey)` | `EntityType#builtInRegistryHolder().is(TagKey)` |
 
 > 最后一行的两处差异由 `platform/LoaderTags` 的 `isBoss(Entity)` 吸收，共享源码不感知。
-> 例外：`common/event/AstralEventType` 的 record 组件类型直接用 `ResourceLocation`，
-> 无类型别名可写，故 26.1.2 平台**不含**该文件（`sourceSets.main.java.exclude`）。
-> ⚠️ **该 exclude 行截至 `1.0.0-SNAPSHOT.5` 仍然保留**：事件框架三件套（`AstralEventType` /
-> `EventContext` / `EventEffect`）本应在合并完成后删除，但合并后的消费方
-> `event/AstralEventSystem.java` 仍是「dev-next 的 import 块 + 主线的精简方法体」，
-> 留着 4 处指向本库的 import（`neoforge-1.21.1` 第 17/18 行、`forge-1.20.1` 第 15/16 行）——
-> Java 中未解析的 import 本身就是编译错误，故删除三件套会让消费方**编译失败**。
-> 待消费方 src 侧清掉这 4 行后，随下一个版本（`.6`）一并删除三件套与该 exclude 行。
+> **历史例外（已于 `1.0.0-SNAPSHOT.5` 消除）**：`common/event/AstralEventType` 曾是唯一「三线无法同源」的
+> 共享文件（26.1 起 `ResourceLocation` 改名 `Identifier`，而该 record 的组件类型直接用旧名，Java 无类型别名），
+> 故当时用 `sourceSets.main.java.exclude` 把它排除在 26.1.2 编译之外。该事件框架三件套
+> （`AstralEventType` / `EventContext` / `EventEffect`）已于 `1.0.0-SNAPSHOT.5` 随合并收尾整体删除
+> （合并后消费方三线零引用），`neoforge-26.1.2/build.gradle` 的 exclude 行与之同批移除 —— **勿再加回**。
 
 ---
 
@@ -235,13 +232,12 @@ CI 场景见 §4.4。
 ## 5. 目录内容
 
 ```
-common/src/main/java/com/merlinkitsune/starenginelib/  # 共享源码（31 个文件）
+common/src/main/java/com/merlinkitsune/starenginelib/  # 共享源码（28 个文件）
 ├── client/       ClientDamageNumbers
 ├── component/    GameplayConfigValues（配置值快照）, GameplayConstants
 ├── effect/       18 个 MobEffect 实现（ReadyEffect 已于 1.0.0-SNAPSHOT.5 按期删除）
 ├── event/        EventTargetCollector（1.0.0-SNAPSHOT.5 起只剩团队收集）
 │                 AmethystDiceHandler / SignActiveTriggeredEvent
-│                 ⚠️ AstralEventType / EventContext / EventEffect 三个过渡符号暂留（见 §1.3）
 ├── item/         BossEntityUtil
 └── target/       TargetSelectionAction / TargetSelectionRegistry / TargetType
 
@@ -281,11 +277,13 @@ neoforge-26.1.2/src/main/java/.../starenginelib/       # 平台专有（5 个文
 - 当前为 `1.0.0-SNAPSHOT.5`，SNAPSHOT 系列**不作**语义化兼容承诺；转正式 `1.0.0` 后再适用上一条。
 - **过渡符号清理记录（合并收尾）**：`1.0.0-SNAPSHOT.5` 在主线合并完成后按计划删除了
   `EventTargetCollector.collectTargets` / `collectTeamTargets` / `collectMaids` / `isMaidOwnedBy`、
-  `GameplayConstants.EVENT_RANGE` / `EVENT_APPLY_MAID` / `KOMACHI_EXTRA_PLAYS_CAP`、以及 `effect/ReadyEffect`；
+  `GameplayConstants.EVENT_RANGE` / `EVENT_APPLY_MAID` / `KOMACHI_EXTRA_PLAYS_CAP`、`effect/ReadyEffect`，
+  以及事件框架三件套 `event/AstralEventType` / `EventContext` / `EventEffect`（并移除
+  `neoforge-26.1.2/build.gradle` 里为 `AstralEventType` 留的 `sourceSets.main.java.exclude` 行）。
   **删除前逐符号 grep 举证**合并后消费方三线零引用（唯一的 `collectTargets` 命中是消费方
-  `RandomCardHandler` 自己的同名方法）。**未删（阻塞）**：`event/AstralEventType` / `EventContext` /
-  `EventEffect` 三件套与 `neoforge-26.1.2/build.gradle` 的 exclude 行 —— 原因见 §1.3 与
-  `temp/t5-cleanup-notes-20260917.md`。
+  `RandomCardHandler` 自己的同名方法）；三件套的删除以其消费方侧 2 处遗留 import 被清掉为前提
+  （消费方提交 `7dc64cb`），故 `.5` 的库字节在该前置完成后**重新发布过**一次 —— 同版本号不同字节，
+  消费方需以 `--refresh-dependencies` 重新解析。判定细节见 `temp/t5-cleanup-notes-20260917.md`。
 - **下沉记录（Phase 1d）**：`1.0.0-SNAPSHOT.4` 把 `common/effect/ReadyEffect` 收进本库 —— 它是三线
   （`neoforge-1.21.1` / `forge-1.20.1` / `neoforge-26.1.2`）字节完全一致、且只依赖 MC API 与库内已有类的
   **自包含单元中唯一尚未进库者**；其余 52 个同源候选的排除理由（非三线一致 / 依赖消费方专有类 / mixin）
@@ -309,8 +307,8 @@ neoforge-26.1.2/src/main/java/.../starenginelib/       # 平台专有（5 个文
   并把 `GameplayConfigValues` 由 13 字段收敛为 6 字段、`GameplayConstants.refresh()` 改为
   `applyConfig(GameplayConfigValues)`；事件框架三件套（`AstralEventType` / `EventContext` / `EventEffect`）
   与 `KOMACHI_EXTRA_PLAYS_CAP` 等「合并后即删」的过渡符号曾**暂留**（当时尚未合并主线的消费方仍在引用，删掉会让那一轮提交无法构建）。
-  截至 `1.0.0-SNAPSHOT.5`：`KOMACHI_EXTRA_PLAYS_CAP` 已按期删除；三件套仍因消费方
-  `AstralEventSystem` 的 4 处遗留 import 阻塞保留（见 §1.3）。消费方需回归自己的 TOML 配置
+  截至 `1.0.0-SNAPSHOT.5`：`KOMACHI_EXTRA_PLAYS_CAP` 与事件框架三件套均已按期删除（三件套以消费方
+  侧遗留 import 清理完毕为前提，见 §1.3）。消费方需回归自己的 TOML 配置
   （`ModConfigSpec` / `ForgeConfigSpec`）并在配置加载后推送值快照（见 §3）。
   注意 `modId`（`starengine_lib`）**未**变更，故整合包文件名不受影响。
 - **破坏性变更记录**：`1.0.0-SNAPSHOT.2` 将 Java 包名由 `com.merlinkitsune.starengine`
