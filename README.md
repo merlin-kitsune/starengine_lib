@@ -112,8 +112,8 @@ GameplayConstants.applyConfig(GameplayConfigValues)   → @Mod 构造期注册�
 
 | 平台 | 坐标 | 发布产物 |
 |---|---|---|
-| NeoForge 1.21.1 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.2` | `jar`（NeoForge 编译与生产同为 Mojmap，无需重映射） |
-| Forge 1.20.1 | `com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.2` | `reobfJar`（**生产 SRG jar**） |
+| NeoForge 1.21.1 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.3` | `jar`（NeoForge 编译与生产同为 Mojmap，无需重映射） |
+| Forge 1.20.1 | `com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.3` | `reobfJar`（**生产 SRG jar**） |
 
 > 两侧版本号**同号**，升级时两个 `gradle.properties` 必须一起改。
 
@@ -126,13 +126,13 @@ GameplayConstants.applyConfig(GameplayConfigValues)   → @Mod 构造期注册�
 // NeoForge 1.21.1
 repositories { mavenLocal() }
 dependencies {
-    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.2"
+    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.3"
 }
 
 // Forge 1.20.1
 repositories { mavenLocal() }
 dependencies {
-    modImplementation "com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.2"
+    modImplementation "com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.3"
 }
 ```
 
@@ -146,7 +146,7 @@ CI 场景见 §4.4。
 [[dependencies.<mod_id>]]
     modId="starengine_lib"
     type="required"        # 1.20.1 Forge 用 mandatory=true
-    versionRange="[1.0.0-SNAPSHOT.2,2.0)"
+    versionRange="[1.0.0-SNAPSHOT.3,2.0)"
     ordering="AFTER"
     side="BOTH"
 ```
@@ -211,11 +211,11 @@ CI 场景见 §4.4。
 ## 5. 目录内容
 
 ```
-common/src/main/java/com/merlinkitsune/starenginelib/  # 共享源码（31 个文件）
+common/src/main/java/com/merlinkitsune/starenginelib/  # 共享源码（28 个文件）
 ├── client/       ClientDamageNumbers
 ├── component/    GameplayConfigValues（配置值快照）, GameplayConstants
 ├── effect/       18 个 MobEffect 实现
-├── event/        AstralEventType / EventContext / EventEffect / EventTargetCollector
+├── event/        EventTargetCollector
 │                 AmethystDiceHandler / SignActiveTriggeredEvent
 ├── item/         BossEntityUtil
 └── target/       TargetSelectionAction / TargetSelectionRegistry / TargetType
@@ -242,11 +242,18 @@ forge-1.20.1/src/main/java/.../starenginelib/          # 平台专有（7 个文
 
 ## 6. 版本与兼容
 
-- 库版本遵循 semver，`1.x` 内保持 API 兼容；消费方 `mods.toml` 声明 `versionRange="[1.0.0-SNAPSHOT.2,2.0)"`。
+- 库版本遵循 semver，`1.x` 内保持 API 兼容；消费方 `mods.toml` 声明 `versionRange="[1.0.0-SNAPSHOT.3,2.0)"`。
   > 下界必须写到 `1.0.0-SNAPSHOT`：`[1.0,2.0)` 不含任何快照版（见 §4.2）。
-  > 下界还要精确到当前快照序号（`.2`），否则改名前的旧库 jar 会被宽松区间接受，
-  > 而其旧包名会导致 `NoClassDefFoundError`（见 §4.2）。
-- 当前为 `1.0.0-SNAPSHOT.2`，SNAPSHOT 系列**不作**语义化兼容承诺；转正式 `1.0.0` 后再适用上一条。
+  > 下界还要精确到当前快照序号（`.3`），否则更早的旧库 jar（改名前的 `.1`、含已删除配置类的 `.2`）
+  > 会被宽松区间接受，分别表现为 `NoClassDefFoundError` 与编译期 `找不到符号`（见 §4.2）。
+- 当前为 `1.0.0-SNAPSHOT.3`，SNAPSHOT 系列**不作**语义化兼容承诺；转正式 `1.0.0` 后再适用上一条。
+- **破坏性变更记录**：`1.0.0-SNAPSHOT.3` 完全移除 Cloth Config 前置与库内公共配置模块
+  （`StarEngineCommonConfig` / `StarEngineConfigs` / `LegacyCommonTomlImporter` / `StarEngineConfigScreen`），
+  并把 `GameplayConfigValues` 由 13 字段收敛为 6 字段、`GameplayConstants.refresh()` 改为
+  `applyConfig(GameplayConfigValues)`，同时删除事件框架死代码
+  （`AstralEventType` / `EventContext` / `EventEffect`）。消费方需回归自己的 TOML 配置
+  （`ModConfigSpec` / `ForgeConfigSpec`）并在配置加载后推送值快照（见 §3）。
+  注意 `modId`（`starengine_lib`）**未**变更，故整合包文件名不受影响。
 - **破坏性变更记录**：`1.0.0-SNAPSHOT.2` 将 Java 包名由 `com.merlinkitsune.starengine`
   改为 `com.merlinkitsune.starenginelib`（maven group 同步改为 `com.merlinkitsune.starenginelib`）。
   消费方所有 `import` 必须同步改写，且必须把区间下界提到 `[1.0.0-SNAPSHOT.2,...)`。
