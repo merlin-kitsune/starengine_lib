@@ -20,35 +20,43 @@
 
 ### 1.2 跨 MC 版本，共享源码而非共享产物
 
-1.20.1（SRG 成员名 / Java 17）与 1.21.1（Mojmap / Java 21）**不能共用同一份编译产物**。
-因此本项目不做单一 `common` Gradle 子项目，而是：
+1.20.1（SRG 成员名 / Java 17）、1.21.1（Mojmap / Java 21）与 26.1.2（Mojmap / Java 25）
+**不能共用同一份编译产物**。因此本项目不做单一 `common` Gradle 子项目，而是：
 
 ```
 common/src/main/java        ← 共享源码目录（不是 Gradle 子项目）
 neoforge-1.21.1/            ← 平台子项目：Java 21 · Mojmap + Parchment · ModDevGradle 2.0.141
 forge-1.20.1/               ← 平台子项目：Java 17 · reobf(SRG) · ModDevGradle Legacy 2.0.144
+neoforge-26.1.2/            ← 平台子项目：Java 25 · Mojmap（无 Parchment）· ModDevGradle 2.0.147
 ```
 
-两个平台子项目各自 `sourceSets.main.java.srcDir('../../common/src/main/java')`，
-**同一份共享源码被编译两次**，各产出一个 jar。
+各平台子项目各自 `sourceSets.main.java.srcDir('../../common/src/main/java')`，
+**同一份共享源码被编译三次**，各产出一个 jar。
 
 ### 1.3 共享源码的两条硬约束
 
-`common` 下的源码必须同时通过两侧编译，因此：
+`common` 下的源码必须同时通过各平台编译，因此：
 
 | 约束 | 原因 | 由谁强制 |
 |---|---|---|
 | 不得使用 Java 21 独有语法（record pattern / switch pattern / `SequencedCollection` 等） | 同一份源码要由 Java 17 工具链编译 | `forge-1.20.1` 侧编译失败 |
-| 只能使用两版 MC 都存在**且签名一致**的 API | 两侧 API 差异面很大 | 两侧编译任一失败 |
+| 只能使用三版 MC 都存在**且签名一致**的 API | 各版 API 差异面很大 | 任一平台编译失败 |
 
 **版本分歧必须留在平台子项目中**，同名类各写一份。已落地的分歧示例：
 
-| 分歧点 | neoforge-1.21.1 | forge-1.20.1 |
-|---|---|---|
-| 客户端帧差参数 | `DeltaTracker` | `float partialTick` |
-| 效果实例类型 | `Holder<MobEffect>` | `MobEffect` |
-| 自定义数据键 | `DataComponent`（原版组件体系） | `ItemDataKey`（Forge 扩展点） |
-| 饰品集成 | 直接使用原版/NeoForge 能力 | `CuriosCompat` 适配器 |
+| 分歧点 | neoforge-1.21.1 | forge-1.20.1 | neoforge-26.1.2 |
+|---|---|---|---|
+| 客户端帧差/渲染参数 | `DeltaTracker` + `GuiGraphics` | `float partialTick` | `DeltaTracker` + `GuiGraphicsExtractor` |
+| 效果实例类型 | `Holder<MobEffect>` | `MobEffect` | `Holder<MobEffect>` |
+| 自定义数据键 | `DataComponent`（原版组件体系） | `ItemDataKey`（Forge 扩展点） | `DataComponent` |
+| 饰品集成 | 直接使用原版/NeoForge 能力 | `CuriosCompat` 适配器 | 直接使用原版/NeoForge 能力 |
+| 标识符类 | `ResourceLocation` | `ResourceLocation` | `Identifier`（26.1 起改名） |
+| 实体 tag 判定 | `EntityType#is(TagKey)` | `EntityType#is(TagKey)` | `EntityType#builtInRegistryHolder().is(TagKey)` |
+
+> 最后一行的两处差异由 `platform/LoaderTags` 的 `isBoss(Entity)` 吸收，共享源码不感知。
+> 例外：`common/event/AstralEventType` 的 record 组件类型直接用 `ResourceLocation`，
+> 无类型别名可写，故 26.1.2 平台**不含**该文件（`sourceSets.main.java.exclude`）；
+> 该事件框架三件套在消费方主线已被删除，本库也只是暂留，合并后即删。
 
 ---
 
@@ -103,6 +111,7 @@ GameplayConstants.applyConfig(GameplayConfigValues)   → @Mod 构造期注册�
 # 仅构建单平台
 ./gradlew :neoforge-1.21.1:build
 ./gradlew :forge-1.20.1:build
+./gradlew :neoforge-26.1.2:build
 
 # 发布到本地 Maven，供消费方 modImplementation 解析
 ./gradlew publishToMavenLocal
@@ -114,8 +123,9 @@ GameplayConstants.applyConfig(GameplayConfigValues)   → @Mod 构造期注册�
 |---|---|---|
 | NeoForge 1.21.1 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.3` | `jar`（NeoForge 编译与生产同为 Mojmap，无需重映射） |
 | Forge 1.20.1 | `com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.3` | `reobfJar`（**生产 SRG jar**） |
+| NeoForge 26.1.2 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.0-SNAPSHOT.3` | `jar`（与 1.21.1 同理，Mojmap 无需重映射） |
 
-> 两侧版本号**同号**，升级时两个 `gradle.properties` 必须一起改。
+> 三侧版本号**同号**，升级时三个 `gradle.properties` 必须一起改。
 
 **Forge 侧必须发布 `reobfJar` 而非 `jar`**：消费方 MDG LegacyForge 在解析期会把生产 SRG jar
 重映射为 dev Mojmap 命名；若发布未重混淆的 dev jar，生产环境会因成员名为 Mojmap 而 `NoSuchFieldError`。
@@ -133,6 +143,12 @@ dependencies {
 repositories { mavenLocal() }
 dependencies {
     modImplementation "com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.3"
+}
+
+// NeoForge 26.1.2
+repositories { mavenLocal() }
+dependencies {
+    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.0-SNAPSHOT.3"
 }
 ```
 
@@ -182,6 +198,7 @@ CI 场景见 §4.4。
 |---|---|---|
 | NeoForge | `D:/.minecraft/versions/狐の航空学 Voxy Edition/mods` | `jar` |
 | Forge | `D:/.minecraft/versions/1.20.1 模组测试/mods` | `reobfJar` |
+| NeoForge 26.1.2 | `D:/.minecraft/versions/26.1.2 模组测试/mods` | `jar` |
 
 旧版本清理按 `starengine_lib-` 前缀；整合包根目录不存在时（如 CI）自动跳过。
 
@@ -233,6 +250,12 @@ forge-1.20.1/src/main/java/.../starenginelib/          # 平台专有（7 个文
 ├── event/ModEffectRemoval         (MobEffect)
 ├── item/CuriosCompat
 └── platform/LoaderEvent, LoaderTags
+
+neoforge-26.1.2/src/main/java/.../starenginelib/       # 平台专有（5 个文件）
+├── StarEngineLib          @Mod 入口
+├── client/ActionBarManager        (DeltaTracker + GuiGraphicsExtractor)
+├── event/ModEffectRemoval         (Holder<MobEffect>)
+└── platform/LoaderEvent, LoaderTags（含 isBoss(Entity)，吸收 26.1 的 tag API 变更）
 ```
 
 **关于 `StarEngineLib`**：入口类的唯一作用是让本库成为可被加载的 mod（`@Mod`），
@@ -247,11 +270,19 @@ forge-1.20.1/src/main/java/.../starenginelib/          # 平台专有（7 个文
   > 下界还要精确到当前快照序号（`.3`），否则更早的旧库 jar（改名前的 `.1`、含已删除配置类的 `.2`）
   > 会被宽松区间接受，分别表现为 `NoClassDefFoundError` 与编译期 `找不到符号`（见 §4.2）。
 - 当前为 `1.0.0-SNAPSHOT.3`，SNAPSHOT 系列**不作**语义化兼容承诺；转正式 `1.0.0` 后再适用上一条。
+- **新平台记录**：`1.0.0-SNAPSHOT.3` 新增 **`neoforge-26.1.2`** 平台子项目（MC 26.1.2 / NeoForge
+  26.1.2.109 / Java 25 / ModDevGradle 2.0.147 / 无 Parchment），使 `common` 由「两版同源」变为
+  「**三版同源**」。为此把两处 26.1 平台差异下沉进 shim：标识符类 `ResourceLocation` → `Identifier`、
+  实体 tag 判定 `EntityType#is(TagKey)` → `EntityType#builtInRegistryHolder().is(TagKey)`
+  （后者由 `platform/LoaderTags#isBoss(Entity)` 吸收，共享源码不知情）。唯一无法同源的是
+  `common/event/AstralEventType`（record 组件类型直接用旧名，Java 无类型别名），故该文件被
+  `sourceSets.main.java.exclude` 排除在 26.1.2 之外 —— 它与其同族在消费方主线已删除，本库合并后即删。
 - **破坏性变更记录**：`1.0.0-SNAPSHOT.3` 完全移除 Cloth Config 前置与库内公共配置模块
   （`StarEngineCommonConfig` / `StarEngineConfigs` / `LegacyCommonTomlImporter` / `StarEngineConfigScreen`），
   并把 `GameplayConfigValues` 由 13 字段收敛为 6 字段、`GameplayConstants.refresh()` 改为
-  `applyConfig(GameplayConfigValues)`，同时删除事件框架死代码
-  （`AstralEventType` / `EventContext` / `EventEffect`）。消费方需回归自己的 TOML 配置
+  `applyConfig(GameplayConfigValues)`；事件框架三件套（`AstralEventType` / `EventContext` / `EventEffect`）
+  与 `KOMACHI_EXTRA_PLAYS_CAP` 等「合并后即删」的过渡符号**暂留**（尚未合并主线的消费方仍在引用，
+  删掉会让本轮提交无法构建）。消费方需回归自己的 TOML 配置
   （`ModConfigSpec` / `ForgeConfigSpec`）并在配置加载后推送值快照（见 §3）。
   注意 `modId`（`starengine_lib`）**未**变更，故整合包文件名不受影响。
 - **破坏性变更记录**：`1.0.0-SNAPSHOT.2` 将 Java 包名由 `com.merlinkitsune.starengine`

@@ -1,0 +1,178 @@
+// StarEngine-Lib / NeoForge 26.1.2 平台子项目(第三条线,与 1.21.1 / 1.20.1 并存)
+// Java 25 · Mojmap(无 Parchment)· ModDevGradle 2.0.147 · 无需 refmap
+//
+// 源码 = 本子项目 src/main/java(平台专有) + ../../common/src/main/java(共享)
+//
+// 注:common 源码原本只被 Java 17(forge-1.20.1)与 Java 21(neoforge-1.21.1)各编译一次;
+// 本子项目加入后 common 要**同时**通过 26.1.2(Java 25 / NeoForge 26.1.2)编译 ⇒
+// common 中使用的 MC API 必须是三个版本都存在且签名一致的子集。
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'net.neoforged.moddev' version '2.0.147'
+    id 'idea'
+}
+
+// maven 坐标版本:纯 semver,不含 + 构建元数据(文件名后缀由 archivesName 承担)
+version = lib_version
+group = mod_group_id
+
+base {
+    archivesName = 'starengine_lib-neoforge-26.1.2'
+}
+
+// Minecraft 26.1.2 的 javaVersion = java-runtime-epsilon / majorVersion 25(1.21.1 为 21)
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+
+// === 共享源码目录 ===
+sourceSets.main.java.srcDir(project.file('../common/src/main/java'))
+// ⚠️ 唯一一份「三线无法同源」的 common 文件:26.1 起 net.minecraft.resources.ResourceLocation
+//    已改名为 Identifier(1.20.1 / 1.21.1 仍叫 ResourceLocation),而
+//    common/event/AstralEventType 的 record 组件类型直接用旧名,Java 无类型别名可言。
+//    该事件框架三件套(AstralEventType / EventContext / EventEffect)在主线已于合并前删除
+//    (消费方改由 AstralEventSystem 直接实现),本库也只是**暂留**它以便尚未合并的
+//    dev-next 消费方能编译,合并完成后即删除 ⇒ 26.1.2 平台不编它。
+sourceSets.main.java.exclude 'com/merlinkitsune/starenginelib/event/AstralEventType.java'
+
+repositories {
+    mavenCentral()
+    maven { url = uri('https://maven.neoforged.net/releases') }
+}
+
+neoForge {
+    version = project.neo_version
+
+    // 无 parchment 块:Parchment 官方 maven 对 26.1.x / 26.2 全部 404,声明它会直接构建失败。
+    // 原版写法一律以本版本反编译源码为准:
+    //   neoforge-26.1.2/build/moddev/artifacts/neoforge-26.1.2.109-sources.jar
+
+    // 本库不注册任何东西,也没有 mixin / AT;runs 留空,库由消费方 mod 的 run 加载。
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+dependencies {
+    // 本库不引入任何第三方模组依赖(与 neoforge-1.21.1 侧一致:配置已回归消费方 TOML,
+    // 库内只保留平台无关的 GameplayConfigValues 值快照 + GameplayConstants.applyConfig(...))。
+}
+
+// 展开 mods.toml 模板中的 ${} 占位符
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from "src/main/templates"
+    into "build/generated/sources/modMetadata"
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            // 显式坐标:默认 artifactId 会退化为子项目名(neoforge-26.1.2)。
+            artifactId = 'starengine_lib-neoforge-26.1.2'
+            from components.java
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+// === 编译产物部署 ===
+// 与另两个平台一致:本库是消费方 astral_dice 的必需前置(mods.toml required),
+// build 后默认推送整合包 jar;开发分支(noPackPushBranches)上跳过。
+def packModsDir = file('D:/.minecraft/versions/26.1.2 模组测试/mods')
+def jarArchiveProvider = tasks.named('jar').flatMap { it.archiveFile }
+
+def noPackPushBranches = ['main']
+def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')
+def dotGitEntry = rootProject.file('.git')
+
+tasks.register('pushToPack') {
+    group = 'build'
+    description = 'Copy the built jar into the 26.1.2 pack mods folder, removing stale versions. Skipped on development branches; force with -PdeployToPack.'
+    dependsOn tasks.named('jar')
+    doLast {
+        if (!forcePackPush) {
+            def readGitBranch = { File dotGit ->
+                File headFile = null
+                if (dotGit.isDirectory()) {
+                    def hf = new File(dotGit, 'HEAD')
+                    headFile = hf.isFile() ? hf : null
+                } else if (dotGit.isFile()) {
+                    def m = dotGit.text.trim() =~ /^gitdir:\s*(.+)$/
+                    if (m.find()) {
+                        def gd = new File(m.group(1).trim())
+                        if (!gd.isAbsolute()) {
+                            gd = new File(dotGit.parentFile, m.group(1).trim())
+                        }
+                        def hf = new File(gd, 'HEAD')
+                        headFile = hf.isFile() ? hf : null
+                    }
+                }
+                if (headFile == null) {
+                    return ''
+                }
+                def s = headFile.text.trim()
+                s.startsWith('ref: refs/heads/') ? s.substring('ref: refs/heads/'.length()) : ''
+            }
+            def branch = readGitBranch(dotGitEntry)
+            if (branch.isEmpty()) {
+                logger.lifecycle('pushToPack: skipped — 无法确定当前 git 分支(detached HEAD 或无 .git);如需强制推送请加 -PdeployToPack')
+                return
+            }
+            if (noPackPushBranches.contains(branch)) {
+                logger.lifecycle("pushToPack: skipped — 分支 '${branch}' 按约定不推送整合包;如需强制推送请加 -PdeployToPack")
+                return
+            }
+        }
+        def jarFile = jarArchiveProvider.get().asFile
+        if (!jarFile.exists()) {
+            logger.warn("pushToPack: built jar not found, skipped: ${jarFile}")
+            return
+        }
+        if (!packModsDir.exists()) {
+            def packRoot = packModsDir.getParentFile()
+            if (packRoot == null || !packRoot.exists()) {
+                logger.warn("pushToPack: pack dir not found, skipped: ${packModsDir}")
+                return
+            }
+            packModsDir.mkdirs()
+        }
+        def stale = packModsDir.listFiles().findAll { File f ->
+            f.isFile() && f.name.startsWith('starengine_lib-') && f.name.endsWith('.jar')
+        }
+        stale.each { it.delete() }
+        def target = new File(packModsDir, jarFile.name)
+        target.withOutputStream { out ->
+            jarFile.withInputStream { inp -> inp.transferTo(out) }
+        }
+        logger.lifecycle("pushToPack: pushed ${jarFile.name} -> ${packModsDir}")
+    }
+}
+
+tasks.named('build') {
+    finalizedBy tasks.named('pushToPack')
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}

@@ -17,7 +17,7 @@ public final class BossEntityUtil {
     }
 
     public static boolean isBossEntity(LivingEntity entity) {
-        if (entity.getType().is(LoaderTags.BOSSES)) return true;
+        if (LoaderTags.isBoss(entity)) return true;
         if (!(entity instanceof Mob mob)) return false;
         // 屏幕上方 boss 血条:实体暴露 getBossEvent()/getBossBar() 且返回非 null
         for (String methodName : new String[]{"getBossEvent", "getBossBar"}) {

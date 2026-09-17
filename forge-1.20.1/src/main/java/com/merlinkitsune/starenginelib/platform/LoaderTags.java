@@ -24,6 +24,17 @@ public final class LoaderTags {
             TagKey.create(Registries.ENTITY_TYPE,
                     net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(COMMON_NAMESPACE, "bosses"));
 
+    /**
+     * 实体是否为 {@code c:bosses}。
+     *
+     * <p>把「按 tag 判定实体类型」的版本差异收进本 shim:1.20.1 / 1.21.1 直接
+     * {@code EntityType#is(TagKey)},26.1 起该方法已移除、须经 {@code builtInRegistryHolder()},
+     * 而共享源码 {@code BossEntityUtil} 只调用本方法。
+     */
+    public static boolean isBoss(net.minecraft.world.entity.Entity entity) {
+        return entity != null && entity.getType().is(BOSSES);
+    }
+
     private LoaderTags() {
     }
 }
