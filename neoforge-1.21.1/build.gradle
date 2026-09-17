@@ -28,8 +28,6 @@ sourceSets.main.java.srcDir(project.file('../common/src/main/java'))
 repositories {
     mavenCentral()
     maven { url = uri('https://maven.neoforged.net/releases') }
-    // Cloth Config(配置 GUI + AutoConfig)官方 maven
-    maven { url = uri('https://maven.shedaniel.me/') }
 }
 
 neoForge {
@@ -49,10 +47,10 @@ neoForge {
 }
 
 dependencies {
-    // Cloth Config(必须前置,由消费方在 mods.toml 声明)。15.0.140 = MC 1.21.1 / NeoForge 21.x。
-    // NeoForge 1.20.5+ 编译与生产同为官方映射,发布 jar 不含 SRG 名(已实测该 jar 内
-    // m_xxxxx_ 形态方法名为 0 处),故无需重映射,用普通 implementation。
-    implementation "me.shedaniel.cloth:cloth-config-neoforge:${cloth_config_version}"
+    // 本库当前不引入任何第三方模组依赖:配置 schema 已回归各消费方自己的
+    // ModConfigSpec / ForgeConfigSpec(见 README §3),库内只保留平台无关的
+    // GameplayConfigValues 值快照与 GameplayConstants.applyConfig(...)。
+    // 共享源码因此不含任何加载器或第三方库字面量,新增依赖前请先确认 common 是否需要它。
 }
 
 // 展开 mods.toml 模板中的 ${} 占位符
@@ -66,7 +64,6 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_name               : mod_name,
             mod_license            : mod_license,
             mod_version            : mod_version,
-            cloth_config_version_range: cloth_config_version_range,
     ]
     inputs.properties replaceProperties
     expand replaceProperties
