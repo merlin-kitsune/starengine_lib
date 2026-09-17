@@ -4,7 +4,7 @@ package com.merlinkitsune.starenginelib.component;
 /**
  * 全局玩法常量。
  * 「仍从配置文件读取」的少量字段(赠送规则书 / 事件作用队伍 / actionbar 时长)必须保持**非 final**:
- * 它们由消费方配置加载/重载完成后推入的值快照写入({@link #applyConfig(GameplayConfigValues)}),
+ * 它们由消费方在配置加载完成后推入的值快照写入({@link #applyConfig(GameplayConfigValues)}),
  * 改成 final 会让编译期内联导致配置不生效。
  * 其余字段为固定常量(不再写入配置文件);其中一部分历史上按 `static`(无 final)书写并沿用至今
  * (如 `SIGN_ACTIVE_COOLDOWN_SECONDS`/`SKILL_WAIT_SECONDS`/`CURSED_SWORD_BONUS_MAX` 等),它们只在
@@ -36,12 +36,20 @@ public final class GameplayConstants {
     // 拥有至少 1 层充能时,立牌主动/效果牌冷却时间缩短比例(20%)
     public static final double CHARGE_COOLDOWN_REDUCTION = 0.2;
     // === 事件系统 ===
+    // ⚠️ 下面 EVENT_RANGE 与 EVENT_APPLY_MAID 目前只被 EventTargetCollector.collectTargets(...)
+    //    (含「已放出女仆」收集)使用,而该调用方(AstralEventSystem)在主线已被改写、
+    //    这两个开关也已从主线配置中删除。本分支尚未合并主线内容,故先按常量(开发默认值)保留,
+    //    **待主线合并完成后连同该组能力一并删除**,不得再作为可配置项暴露。
+    // 事件作用范围(格,常量:16)
+    public static final int EVENT_RANGE = 16;
     // 事件是否作用于 Minecraft 同队玩家
     public static boolean EVENT_APPLY_MC_TEAM = true;
     // 事件是否作用于 FTB Teams 队友(需安装 FTB Teams,API 不符时自动跳过)
     public static boolean EVENT_APPLY_FTB_TEAM = true;
     // 事件是否作用于 OPAC 队伍(需安装 Open Parties and Claims,API 不符时自动跳过)
     public static boolean EVENT_APPLY_OPAC = true;
+    // 事件是否作用于玩家拥有的已放出女仆(需安装车万女仆模组;同 EVENT_RANGE,待合并后删除)
+    public static final boolean EVENT_APPLY_MAID = true;
     // 立牌主动技能触发冷却(单位:秒,默认 180)
     public static int SIGN_ACTIVE_COOLDOWN_SECONDS = 180;
     // 立牌主动技能触发冷却 tick 数(派生值)
@@ -58,6 +66,10 @@ public final class GameplayConstants {
     public static int PARUNAN_PASSIVE_INTERVAL_SECONDS = 60;
     // 手持风扇-大:主动技能后对周围敌对目标施加标记的范围(格,常量:16)
     public static final int HAND_FAN_BIG_RANGE = 16;
+    // 忍者立牌:主动"出牌数+1"银行的存储上限(仅银行容量,与 MAX_EFFECT_CARD_PLAYS 出牌上限无关)
+    // ⚠️ 同 EVENT_RANGE:主线已把忍者主动改写为「当前出牌轮一次性 +1」并删除出牌银行,
+    //    本分支尚未合并,故先保留该常量;**合并完成后删除**。
+    public static final int KOMACHI_EXTRA_PLAYS_CAP = 9;
 
     // actionbar 消息显示总时长上限(单位: tick,默认 3 秒;任何消息最多显示该时长)
     public static int ACTIONBAR_DURATION_TICKS = 60;
