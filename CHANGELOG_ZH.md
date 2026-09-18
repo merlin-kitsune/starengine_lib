@@ -3,7 +3,15 @@
 > 本文件仅收录中文更新日志；英文版见 [`CHANGELOG.md`](CHANGELOG.md)。
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 
-## 未发布（1.0.0-SNAPSHOT.6）
+## 未发布（1.0.0-SNAPSHOT.10）
+
+> 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
+> 版本号说明：`.10` 是**资源包元数据修复 + 版本线统一**版本 —— 给 `forge-1.20.1` 补上缺失的 `pack.mcmeta`（Forge 把每个模组 jar 当作资源包校验，缺该文件时在加载界面报一条警告，且该模组的资源包**不会被注册**），并沿用 `.6` 的加载门槛修复。按用户 2026-09-17 指令，库版本号统一为 `1.0.0-SNAPSHOT.10`（与消费方 `2.0.0-SNAPSHOT.10` 的 patch 段同号）；该修复原先以 `.7` 为号在途（只发布过 mavenLocal、从未进入 git），按上面的合并约定并入本节，不单列 `.7` 小节。必须 bump 的原因同前几版：该版本号不以 `-SNAPSHOT` 结尾（按 Maven 语义属普通版本），Gradle 不把它当作 changing module —— 不 bump 则消费方会继续解析 `mavenLocal` 里那份没有 `pack.mcmeta`（且需 `--refresh-dependencies` 才能重取）的旧 jar，警告依旧。
+
+### 工程
+
+- **修复：Forge 1.20.1 加载界面报「File … failed to load a valid ResourcePackInfo」**。现象：消费方 `run/1.20.1` 客户端进入 Forge 的 `Warning while loading mods` 界面，列出 1 条警告并指向库 jar（用户截图与 `latest.log` 均指向 `starengine_lib-forge-1.20.1-1.0.0-SNAPSHOT.5.jar`；`.6` 同样缺该文件，故该警告与快照序号无关），日志对应行 `[net.minecraft.server.packs.repository.Pack/]: Missing metadata in pack mod:starengine_lib`。根因（**读本机 Forge 1.20.1 源码取证**，非推测）：`net.minecraftforge.client.loading.ClientModLoader#clientPackFinder`（行 154-165）对**每一个**模组文件调用 `Pack.readMetaAndCreate(name, …, PackType.CLIENT_RESOURCES, Pack.Position.BOTTOM, …)`，返回 `null` 时执行 `ModLoader.get().addWarning(new ModLoadingWarning(mod, ModLoadingStage.ERROR, "fml.modloading.brokenresources", e.getKey()))` —— `assets/forge/lang/*.json` 里该键的文案即 `File {2} failed to load a valid ResourcePackInfo`；`Pack.readMetaAndCreate` 在 jar 内**没有 `pack.mcmeta`**（或元数据无法按该 PackType 解析）时返回 null。服务端同源：`net.minecraftforge.server.ServerLifecycleHooks`（行 214）在 `PackType.SERVER_DATA` 上做同一检查。⇒ 凡缺 `pack.mcmeta` 的 Forge 1.20.1 模组 jar 都会各报一条警告，且其资源包**不被注册**（库当前无资源 ⇒ 无功能损失，但属静默失效面）。处置：新增 `forge-1.20.1/src/main/resources/pack.mcmeta`（`pack_format` **15**、`description` = `starengine_lib resources`，与消费方 `forge-1.20.1/src/main/resources/pack.mcmeta` 同形）。**范围仅 Forge 1.20.1**：NeoForge 1.21.1 / 26.1.2 不走这两段代码（两侧运行日志无该警告，消费方三线 jar 也只在 1.20.1 侧带 `pack.mcmeta`），且各版本 `pack_format` 不同，故**不猜测**其余平台的取值（需要时按各自版本客户端源码取值再补）。三平台 `lib_version` / `mod_version` 由 `1.0.0-SNAPSHOT.6` 统一到 **`1.0.0-SNAPSHOT.10`**（后缀各自 `+neoforge_1.21.1` / `+forge_1.20.1` / `+neoforge_26.1.2`，与消费方 `2.0.0-SNAPSHOT.10` 的 patch 段同号）并已 `publishToMavenLocal`；**库内 Java 源码零改动**。
+## 1.0.0-SNAPSHOT.6
 
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 > 版本号说明：`.6` 是**加载门槛修复**版本 —— 修掉「库自身被 FML 拒载」的根因，并把 forge 侧门槛对齐到已文档化口径。必须 bump 的原因同前几版：该版本号不以 `-SNAPSHOT` 结尾（按 Maven 语义属普通版本），Gradle 不把它当作 changing module —— 不 bump 则消费方会继续解析 `mavenLocal` 里那份**带错 `loaderVersion`、会被 FML 拒载**的 `.5` jar。
