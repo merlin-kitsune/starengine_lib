@@ -50,6 +50,8 @@ public final class GameplayConstants {
     public static boolean EVENT_APPLY_FTB_TEAM = true;
     // 事件是否作用于 OPAC 队伍(需安装 Open Parties and Claims,API 不符时自动跳过)
     public static boolean EVENT_APPLY_OPAC = true;
+    /** 是否允许「枪弹/炮弹类」伤害计入法伤（默认 false = 默认屏蔽枪弹伤害，与既有行为一致）。由消费方公共配置 allow_firearm_damage 驱动。 */
+    public static boolean ALLOW_FIREARM_DAMAGE = false;
     // 立牌主动技能触发冷却(单位:秒,默认 180)
     public static int SIGN_ACTIVE_COOLDOWN_SECONDS = 180;
     // 立牌主动技能触发冷却 tick 数(派生值)
@@ -112,6 +114,8 @@ public final class GameplayConstants {
         EVENT_APPLY_MC_TEAM = config.eventApplyMcTeam();
         EVENT_APPLY_FTB_TEAM = config.eventApplyFtbTeam();
         EVENT_APPLY_OPAC = config.eventApplyOpac();
+
+        ALLOW_FIREARM_DAMAGE = config.allowFirearmDamage();
 
         ACTIONBAR_DURATION_TICKS = config.actionbarDurationTicks();
         ACTIONBAR_FADE_TICKS = config.actionbarFadeTicks();

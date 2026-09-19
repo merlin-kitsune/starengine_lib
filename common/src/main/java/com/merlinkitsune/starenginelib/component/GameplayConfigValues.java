@@ -10,6 +10,10 @@ package com.merlinkitsune.starenginelib.component;
  *
  * <p>字段即契约:消费方按**位置**构造本 record,增删或改序字段会让消费方在编译期失败;
  * 调整可配置项时必须两侧同步(消费方配置项定义 + 本 record)。
+ *
+ * <p>{@code allowFirearmDamage}:是否允许「枪弹/炮弹类」伤害计入法伤。**默认 false = 默认屏蔽枪弹
+ * 类伤害**(与既有行为完全一致);消费方把公共配置 {@code allow_firearm_damage} 设为 true 时才允许
+ * 这类伤害进入法伤统计与结算。
  */
 public record GameplayConfigValues(
         boolean giveGuideBookOnFirstJoin,
@@ -17,5 +21,6 @@ public record GameplayConfigValues(
         boolean eventApplyFtbTeam,
         boolean eventApplyOpac,
         int actionbarDurationTicks,
-        int actionbarFadeTicks) {
+        int actionbarFadeTicks,
+        boolean allowFirearmDamage) {
 }
