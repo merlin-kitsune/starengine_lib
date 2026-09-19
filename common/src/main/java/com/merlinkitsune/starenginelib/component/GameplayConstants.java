@@ -33,8 +33,14 @@ public final class GameplayConstants {
     // === 充能流派 ===
     // 充能最大层数(写入常量,暂不提供配置文件)
     public static final int CHARGE_MAX_STACKS = 20;
-    // 拥有至少 1 层充能时,立牌主动/效果牌冷却时间缩短比例(20%)
-    public static final double CHARGE_COOLDOWN_REDUCTION = 0.2;
+    // 拥有至少 1 层充能时,立牌主动技能冷却的**上限**(单位:秒,2026-09-25 改口径):
+    // 基础值超过该上限时封顶为 160 秒;基础值本就更低(如枪匠「精密技巧」的 120 秒)则不受影响。
+    // 该上限作用于**基础值**,之后再叠加其它减免(诡异骰子 -50% 等)。
+    // 取代旧的按比例减免常量 `CHARGE_COOLDOWN_REDUCTION`(0.2,已删除)。
+    public static final int CHARGE_SIGN_COOLDOWN_CAP_SECONDS = 160;
+    // 拥有至少 1 层充能时,效果牌公共冷却的**上限**(单位:秒,2026-09-25 改口径):
+    // 基础值 30 秒 ⇒ 有充能时 20 秒;同上,作用于基础值。
+    public static final int CHARGE_EFFECT_CARD_COOLDOWN_CAP_SECONDS = 20;
     // === 事件系统 ===
     // 注:EVENT_RANGE / EVENT_APPLY_MAID 与其唯一使用方 EventTargetCollector.collectTargets + 女仆收集
     //     已于 1.0.0-SNAPSHOT.5 按期删除(合并后消费方三线零引用)。
