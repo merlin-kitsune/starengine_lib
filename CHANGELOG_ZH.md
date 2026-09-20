@@ -3,10 +3,12 @@
 > 本文件仅收录中文更新日志；英文版见 [`CHANGELOG.md`](CHANGELOG.md)。
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 
-## 未发布（1.0.0-SNAPSHOT.10）
+## 未发布（1.0.0-SNAPSHOT.13）
 
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
-> 版本号说明：`.10` 是**资源包元数据修复 + 版本线统一**版本 —— 给 `forge-1.20.1` 补上缺失的 `pack.mcmeta`（Forge 把每个模组 jar 当作资源包校验，缺该文件时在加载界面报一条警告，且该模组的资源包**不会被注册**），并沿用 `.6` 的加载门槛修复。按用户 2026-09-17 指令，库版本号统一为 `1.0.0-SNAPSHOT.10`（与消费方 `2.0.0-SNAPSHOT.10` 的 patch 段同号）；该修复原先以 `.7` 为号在途（只发布过 mavenLocal、从未进入 git），按上面的合并约定并入本节，不单列 `.7` 小节。必须 bump 的原因同前几版：该版本号不以 `-SNAPSHOT` 结尾（按 Maven 语义属普通版本），Gradle 不把它当作 changing module —— 不 bump 则消费方会继续解析 `mavenLocal` 里那份没有 `pack.mcmeta`（且需 `--refresh-dependencies` 才能重取）的旧 jar，警告依旧。
+> 版本号说明：`.13` 是**资源包元数据修复 + 版本线统一**版本 —— 给 `forge-1.20.1` 补上缺失的 `pack.mcmeta`（Forge 把每个模组 jar 当作资源包校验，缺该文件时在加载界面报一条警告，且该模组的资源包**不会被注册**），并沿用 `.6` 的加载门槛修复。按用户 2026-09-17 指令，库版本号统一为 `1.0.0-SNAPSHOT.10`（与消费方 `2.0.0-SNAPSHOT.10` 的 patch 段同号）；该修复原先以 `.7` 为号在途（只发布过 mavenLocal、从未进入 git），按上面的合并约定并入本节，不单列 `.7` 小节。必须 bump 的原因同前几版：该版本号不以 `-SNAPSHOT` 结尾（按 Maven 语义属普通版本），Gradle 不把它当作 changing module —— 不 bump 则消费方会继续解析 `mavenLocal` 里那份没有 `pack.mcmeta`（且需 `--refresh-dependencies` 才能重取）的旧 jar，警告依旧。
+
+- **新增模组图标，并把描述文本统一到三平台。** 仓库根目录的 `icon.png` 现作为各 jar 的模组图标发布：同一份字节（2671 字节，PNG 签名 `89 50 4E 47 0D 0A 1A 0A`）被复制到 `neoforge-1.21.1/src/main/resources/icon.png`、`forge-1.20.1/src/main/resources/icon.png` 与 `neoforge-26.1.2/src/main/resources/icon.png`，即 **jar 根目录** —— 正是 FML 的 `logofile` 解析器查找的位置（与消费方 `astral_dice` 各 jar 用根级 `icon.png` 的做法同源）。三份元数据模板均新增 `logofile="icon.png"`，且 `description` 统一为 1.21.1 侧文本：`A common library for the Astral Dice mod. It includes cross-platform implementations and supports functional integration with other mods.` 原先的中文多段描述随之从 `forge-1.20.1` 与 `neoforge-26.1.2` 侧移除，模组列表条目三平台一致。注：仓库根目录的 `icon.png` 不是任何子项目的资源根，真正随 jar 发布的是 `src/main/resources` 下这三份副本。本次仅元数据与资源改动，**库内 Java 源码零改动**。三平台版本号 `1.0.0-SNAPSHOT.12 → 1.0.0-SNAPSHOT.13`，必须 bump 的原因同前几版：该版本号不以 `-SNAPSHOT` 结尾（按 Maven 语义属普通版本），Gradle 不把它当作 changing module —— 不 bump 则消费方会继续解析 `mavenLocal` 里那份既没有图标、描述也仍旧的 jar。
 
 ### 工程
 

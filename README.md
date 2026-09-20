@@ -123,9 +123,9 @@ GameplayConstants.applyConfig(GameplayConfigValues)   → @Mod 构造期注册�
 
 | 平台 | 坐标 | 发布产物 |
 |---|---|---|
-| NeoForge 1.21.1 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.10` | `jar`（NeoForge 编译与生产同为 Mojmap，无需重映射） |
-| Forge 1.20.1 | `com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.10` | `reobfJar`（**生产 SRG jar**） |
-| NeoForge 26.1.2 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.0-SNAPSHOT.10` | `jar`（与 1.21.1 同理，Mojmap 无需重映射） |
+| NeoForge 1.21.1 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.13` | `jar`（NeoForge 编译与生产同为 Mojmap，无需重映射） |
+| Forge 1.20.1 | `com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.13` | `reobfJar`（**生产 SRG jar**） |
+| NeoForge 26.1.2 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.0-SNAPSHOT.13` | `jar`（与 1.21.1 同理，Mojmap 无需重映射） |
 
 > 三侧版本号**同号**，升级时三个 `gradle.properties` 必须一起改。
 
@@ -138,19 +138,19 @@ GameplayConstants.applyConfig(GameplayConfigValues)   → @Mod 构造期注册�
 // NeoForge 1.21.1
 repositories { mavenLocal() }
 dependencies {
-    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.10"
+    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0-SNAPSHOT.13"
 }
 
 // Forge 1.20.1
 repositories { mavenLocal() }
 dependencies {
-    modImplementation "com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.10"
+    modImplementation "com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0-SNAPSHOT.13"
 }
 
 // NeoForge 26.1.2
 repositories { mavenLocal() }
 dependencies {
-    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.0-SNAPSHOT.10"
+    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.0-SNAPSHOT.13"
 }
 ```
 
@@ -164,7 +164,7 @@ CI 场景见 §4.4。
 [[dependencies.<mod_id>]]
     modId="starengine_lib"
     type="required"        # 1.20.1 Forge 用 mandatory=true
-    versionRange="[1.0.0-SNAPSHOT.10,2.0)"
+    versionRange="[1.0.0-SNAPSHOT.13,2.0)"
     ordering="AFTER"
     side="BOTH"
 ```
@@ -274,13 +274,13 @@ neoforge-26.1.2/src/main/java/.../starenginelib/       # 平台专有（5 个文
 
 ## 6. 版本与兼容
 
-- 库版本遵循 semver，`1.x` 内保持 API 兼容；消费方 `mods.toml` 声明 `versionRange="[1.0.0-SNAPSHOT.10,2.0)"`。
+- 库版本遵循 semver，`1.x` 内保持 API 兼容；消费方 `mods.toml` 声明 `versionRange="[1.0.0-SNAPSHOT.13,2.0)"`。
   > 下界必须写到 `1.0.0-SNAPSHOT`：`[1.0,2.0)` 不含任何快照版（见 §4.2）。
-  > 下界还要精确到当前快照序号（`.10`），否则更早的旧库 jar（改名前的 `.1`、含已删除配置类的 `.2`、
+  > 下界还要精确到当前快照序号（`.13`），否则更早的旧库 jar（改名前的 `.1`、含已删除配置类的 `.2`、
   > 缺 `ReadyEffect` 的 `.3`、仍带已删过渡符号的 `.4`、**loaderVersion 写错会被 FML 整体拒载**的 `.5`）
   > 会被宽松区间接受，分别表现为 `NoClassDefFoundError`、编译期 `找不到符号`，
   > 或（`.5`）整个库 jar 被加载器拒载（见 §4.2 与下方的 `.6` 记录）。
-- 当前为 `1.0.0-SNAPSHOT.10`，SNAPSHOT 系列**不作**语义化兼容承诺；转正式 `1.0.0` 后再适用上一条。
+- 当前为 `1.0.0-SNAPSHOT.13`，SNAPSHOT 系列**不作**语义化兼容承诺；转正式 `1.0.0` 后再适用上一条。
 - **加载门槛修复记录（2026-09-17）**：`1.0.0-SNAPSHOT.6` 修掉「库自身被 FML 拒载」——
   `neoforge-1.21.1` 的 `loaderVersion` 槽（模板 `${loader_version_range}`）曾被填成 NeoForge 版本带
   `[21.1,21.2)`，而该槽比的是 **javafml 语言提供者版本**（本机 NeoForge 21.1.235 报 `4.0.42`），

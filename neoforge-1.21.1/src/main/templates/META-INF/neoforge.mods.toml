@@ -1,12 +1,5 @@
 modLoader="javafml"
 
-# 加载器(javafml 语言提供者)版本门槛 —— 该槽比的是 **FML 语言提供者的版本**(本机 NeoForge
-# 21.1.235 报 4.0.42),**不是** NeoForge 版本带;故只能写语言区间(= gradle.properties 的
-# loader_version_range,当前 [1,),与消费方同值)。
-# ⚠️ 2026-09-17 实测:此处若写成 NeoForge 版本带 [21.1,21.2),FML 会**直接拒载整个库 jar**
-#    ("needs language provider javafml:21.1 or above, and below 21.2 to load / We have found 4.0.42";
-#     崩溃报告见消费方 run/1.21.1/crash-reports/crash-2026-09-17_20.41.28-fml.txt)。
-# NeoForge 版本带属于下面 modId="neoforge" 依赖的 versionRange(那里比的是版本)。
 loaderVersion="${loader_version_range}"
 license="${mod_license}"
 
@@ -15,13 +8,9 @@ modId="${mod_id}"
 version="${mod_version}"
 displayName="${mod_name}"
 authors="MerlinKitsune, Nintyfive95"
+logofile="icon.png"
 description='''
-StarEngine 星引擎 —— Astral Dice(星之骰戏)系列模组共用的引擎库。
-
-本库不注册任何注册表条目(物品/效果/附件/数据组件/能力全部留在消费方 mod),
-因此搬迁不会改变任何 ResourceLocation 归属,不破坏存档与数据包。
-
-共享源码位于仓库 common/ 目录,由 1.20.1 与 1.21.1 两个平台各自编译一次。
+A common library for the Astral Dice mod. It includes cross-platform implementations and supports functional integration with other mods.
 '''
 
 [[dependencies.${mod_id}]]
