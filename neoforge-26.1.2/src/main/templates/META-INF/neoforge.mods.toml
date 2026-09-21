@@ -12,7 +12,9 @@ modId="${mod_id}"
 version="${mod_version}"
 displayName="${mod_name}"
 authors="MerlinKitsune, Nintyfive95"
-logofile="icon.png"
+# ⚠️ 键名大小写敏感:必须是 logoFile(大写 F),写成 logofile 会被解析器**静默忽略**,
+# 游戏 mod 界面永远不显示图标(2026-09-22 修正,三平台同步)。
+logoFile="icon.png"
 description='''
 A common library for the Astral Dice mod. It includes cross-platform implementations and supports functional integration with other mods.
 '''
