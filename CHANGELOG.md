@@ -3,7 +3,36 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
-## Unreleased (1.0.0-SNAPSHOT.13)
+## Unreleased (1.0.0-SNAPSHOT.14)
+
+> Convention: follow-up changes to entries already recorded for the current version are merged into the original entry;
+> only the final wording is kept.
+> Version note: `.14` adds the **player balance ledger backend** (the library side of the star coin wallet feature).
+
+### New features
+
+- **New player balance ledger (library-side backend of the star coin wallet)**: a new `economy` package in `common` —
+  `EconomyStorage` (the platform storage seam: read / write / offline read), `StarEngineEconomy` (the public API:
+  `getBalance / setBalance / hasBalance / deposit / withdraw / transfer` plus offline reads; **returns 0 / false and never
+  throws when no storage is installed**, so third-party mods such as FTB can integrate safely) and `StarCoinCommand`
+  (`/starcoin add|set|remove|get|rank`, where `rank` includes **offline players**).
+  The balance lives in **player persistent NBT** — the library's standing invariant is that it never registers registry
+  entries, so `AttachmentType` is deliberately not used — and is explicitly copied on `PlayerEvent.Clone`, so the
+  **balance survives death**. One implementation per platform (`NeoForgeEconomyStorage` / `ForgeEconomyStorage`; the only
+  differences are the event package names and the persistent-data root segment in the player `.dat`, i.e.
+  `NeoForgeData` / `ForgeData`); 26.1.2 is **not wired up** (the API degrades to unavailable). The platform entry point
+  installs the storage implementation.
+- **New command permission seam `CommandPermissionGate`**: `CommandSourceStack#hasPermission(int)` has a different
+  signature on **26.1.2** (identical on 1.20.1 / 1.21.1), so shared code does not write the permission predicate directly;
+  the platform supplies `(source, level) -> source.hasPermission(level)`.
+
+### Engineering
+
+- Version bumped on all three platforms from `1.0.0-SNAPSHOT.13` to `1.0.0-SNAPSHOT.14` and published with
+  `publishToMavenLocal`; `build` passes on all three (including compiling the shared sources on 26.1.2, which is exactly
+  what enforces the keep-common-version-agnostic rule).
+
+## 1.0.0-SNAPSHOT.13
 
 > Convention: later edits to an entry already recorded for this version are merged into that entry — only the final version is kept, no "updated again" follow-ups.
 > Note on the version number: `.13` is the **resource-pack metadata fix + version-line unification** release — it adds the missing `pack.mcmeta` to `forge-1.20.1` (Forge validates every mod jar as a resource pack; without that file the loading screen shows a warning and the mod's resource pack is **not registered**) and keeps the `.6` loader-gate fix. Per the user's ruling of 2026-09-17 the library version is unified as `1.0.0-SNAPSHOT.10` (same patch segment as the consumer's `2.0.0-SNAPSHOT.10`); the fix was originally in flight as `.7` (published to `mavenLocal` only, never committed), so it is merged into this section per the convention above and no separate `.7` section is created. The bump is mandatory for the same reason as before: the version does not end in `-SNAPSHOT` (a normal version under Maven semantics), so Gradle does not treat it as a changing module — without a bump a consumer keeps resolving the old jar from `mavenLocal`, which has no `pack.mcmeta` (and needs `--refresh-dependencies` to be re-resolved anyway).

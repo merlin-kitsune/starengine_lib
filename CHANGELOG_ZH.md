@@ -3,7 +3,30 @@
 > 本文件仅收录中文更新日志；英文版见 [`CHANGELOG.md`](CHANGELOG.md)。
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 
-## 未发布（1.0.0-SNAPSHOT.13）
+## 未发布（1.0.0-SNAPSHOT.14）
+
+> 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加「再次修改」条目。
+> 版本号说明：`.14` 是**新增玩家余额账本底层**版本（星币钱包功能的库侧实现）。
+
+### 新功能
+
+- **新增玩家余额账本（星币钱包的库侧底层）**：`common` 新增 `economy` 包 ——
+  `EconomyStorage`（平台存储 seam：读 / 写 / 离线读）、`StarEngineEconomy`（对外 API：`getBalance / setBalance / hasBalance /
+  deposit / withdraw / transfer` + 离线读；**存储缺失时一律返回 0 / false 且不抛异常**，便于第三方模组（如 FTB）安全联动）、
+  `StarCoinCommand`（`/starcoin add|set|remove|get|rank`，其中 `rank` 含**离线玩家**）。
+  余额以**玩家持久化 NBT** 承载 —— 库的既有不变量是「不注册任何注册表条目」，故**不使用** `AttachmentType`；
+  并在 `PlayerEvent.Clone` 时显式复制 ⇒ **余额不因死亡丢失**。两平台各一份实现
+  （`NeoForgeEconomyStorage` / `ForgeEconomyStorage`，差异仅事件包名与玩家 `.dat` 里持久化数据的根段
+  `NeoForgeData` / `ForgeData`）；26.1.2 侧**未接入**（API 安全降级为不可用）。库入口构造时注入存储实现。
+- **新增命令权限 seam `CommandPermissionGate`**：`CommandSourceStack#hasPermission(int)` 在 **26.1.2** 上签名不一致
+  （1.20.1 / 1.21.1 一致），故共享源码不直接写权限谓词，改由平台侧注入 `(source, level) -> source.hasPermission(level)`。
+
+### 工程
+
+- 三平台版本号 `1.0.0-SNAPSHOT.13 → 1.0.0-SNAPSHOT.14` 并已 `publishToMavenLocal`；
+  三平台 `build` 通过（含共享源码在 26.1.2 的编译验证，正是它保证了 keep-common-version-agnostic 这条红线）。
+
+## 1.0.0-SNAPSHOT.13
 
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加“再次修改”条目。
 > 版本号说明：`.13` 是**资源包元数据修复 + 版本线统一**版本 —— 给 `forge-1.20.1` 补上缺失的 `pack.mcmeta`（Forge 把每个模组 jar 当作资源包校验，缺该文件时在加载界面报一条警告，且该模组的资源包**不会被注册**），并沿用 `.6` 的加载门槛修复。按用户 2026-09-17 指令，库版本号统一为 `1.0.0-SNAPSHOT.10`（与消费方 `2.0.0-SNAPSHOT.10` 的 patch 段同号）；该修复原先以 `.7` 为号在途（只发布过 mavenLocal、从未进入 git），按上面的合并约定并入本节，不单列 `.7` 小节。必须 bump 的原因同前几版：该版本号不以 `-SNAPSHOT` 结尾（按 Maven 语义属普通版本），Gradle 不把它当作 changing module —— 不 bump 则消费方会继续解析 `mavenLocal` 里那份没有 `pack.mcmeta`（且需 `--refresh-dependencies` 才能重取）的旧 jar，警告依旧。
