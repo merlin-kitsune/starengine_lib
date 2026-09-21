@@ -3,6 +3,41 @@
 > 本文件仅收录中文更新日志；英文版见 [`CHANGELOG.md`](CHANGELOG.md)。
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 
+## 未发布（1.0.0-SNAPSHOT.15）
+
+> 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加「再次修改」条目。
+> 版本号说明：`.15` 是**公共判定逻辑下沉**版本 —— 把消费方 `astral_dice` 两侧逐字节一致的敌对/选择器/钱包显示判定搬进库。
+
+### 新功能
+
+- **新增 `combat` 包：敌对目标判定的**唯一入口**下沉**。`HostileTargets`（`isHostile(Entity)` / `isHostile(viewer, target)`，
+  口径 = 敌对生物 ∪ 已被激怒的中立生物 ∪ 「非同队伍且曾主动攻击过观察者的玩家」）、
+  `PlayerHostilityTracker`（受害者 UUID → 攻击者 UUID 集合的内存表 + `hasAttacked` / `forget`）。
+  ⚠️ **表与事件分离**：库内**不注册任何事件**（库红线），四个平台挂点留在消费方 ——
+  记进攻（`LivingDamageEvent`）、死亡清（`LivingDeathEvent`）、死亡重生克隆清（`PlayerEvent.Clone`）、
+  登出清（`PlayerLoggedOutEvent`）由消费方 `combat.PlayerHostilityTrackerEvents` 翻译成库的
+  `recordAttack` / `recordAttackIfExternal` / `forget` 调用。
+- **新增平台 seam `InternalDamageWindows`**：`PlayerHostilityTracker` 需区分「主动攻击」与「模组内部波及伤害」
+  （溅射 / AOE / 反击注入），而这两个窗口开关属消费方的玩法实现（不下沉）⇒ 库内只留判定接口，
+  由消费方启动时 `install(aoeProbe, counterProbe)` 注入；未注入时一律返回 `false`（安全方向：
+  漏判只多记一条立场，误判会让真实攻击不计入）。
+- **新增 `target.SelectorTargets`**：把「敌对」族并到 `HostileTargets` 上，修补 `TargetType#matches`
+  对 `ENEMY` / `ENEMY_OR_RIVAL` 只做裸 `instanceof Enemy`、漏掉被激怒的狼/铁傀儡/北极熊/蜜蜂的缺陷；
+  另含「允许对自身使用」的四参重载。**该缺陷在库内被就地适配而非改写 `TargetType`** ——
+  既有语义保持逐字不变，调用点一律走 `SelectorTargets`。
+- **新增 `target.SignSelectionGate`**：立牌主动技能前置门控的待执行记录（纯内存瞬态，`arm` / `isArmed` / `take` / `clear`）。
+- **新增 `economy.StarCoinWalletState`**：星币钱包余额条的客户端显示缓存（只有基本类型，
+  **刻意不含任何客户端专有类型** ⇒ 服务端也会加载它）。与库既有 `StarEngineEconomy` 同域。
+
+### 工程
+
+- 三平台版本号 `1.0.0-SNAPSHOT.14 → 1.0.0-SNAPSHOT.15` 并已 `publishToMavenLocal`；
+  三平台 `compileJava` 通过（含共享源码在 **26.1.2** 的编译验证 —— 正是它保证了「只用三版本都存在的 API」这条红线）。
+  开包核对：三平台 jar 内均含上述 7 个新 class（含 `InternalDamageWindows$Probe`、`SignSelectionGate$Pending`）。
+- 消费方 `astral_dice` 同步解除对本地类的依赖：删掉两侧的 `combat/HostileTargets`、`combat/PlayerHostilityTracker`、
+  `target/SelectorTargets`、`target/SignSelectionGate`、`economy/StarCoinWalletState`，
+  新增 `combat/PlayerHostilityTrackerEvents`（平台挂点）。
+
 ## 未发布（1.0.0-SNAPSHOT.14）
 
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加「再次修改」条目。

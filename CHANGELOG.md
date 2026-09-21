@@ -3,6 +3,50 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
+## Unreleased (1.0.0-SNAPSHOT.15)
+
+> Convention: follow-up changes to entries already recorded for the current version are merged into the original entry;
+> only the final wording is kept.
+> Version note: `.15` is the **shared-judgement sinking** release — it moves the byte-identical hostility / selector /
+> wallet-display judgements out of the consumer `astral_dice` and into the library.
+
+### New features
+
+- **New `combat` package: the single entry point for hostile-target judgement, sunk from the consumer.**
+  `HostileTargets` (`isHostile(Entity)` / `isHostile(viewer, target)`; semantics = hostile mobs ∪ angered neutral mobs ∪
+  "players neither on the same team nor who have ever attacked the viewer") and `PlayerHostilityTracker`
+  (an in-memory map of victim UUID → attacker UUIDs, with `hasAttacked` / `forget`).
+  ⚠️ **Table and events are separated**: the library **registers no events at all** (a library red line), so the four
+  platform hooks stay on the consumer side — record an attack (`LivingDamageEvent`), clear on death
+  (`LivingDeathEvent`), clear on death-respawn clone (`PlayerEvent.Clone`) and clear on log-out
+  (`PlayerLoggedOutEvent`) are translated by the consumer's `combat.PlayerHostilityTrackerEvents` into the library's
+  `recordAttack` / `recordAttackIfExternal` / `forget` calls.
+- **New platform seam `InternalDamageWindows`**: `PlayerHostilityTracker` must distinguish a "deliberate attack" from the
+  mod's own splash / AOE / counter-injection damage. Those two window flags belong to the consumer's gameplay
+  implementation (not sunk), so the library only exposes the predicate and the consumer injects it at startup via
+  `install(aoeProbe, counterProbe)`. When nothing is installed both predicates return `false` — the safe direction,
+  since a missed match only records one extra hostility entry while a false match would drop a real attack.
+- **New `target.SelectorTargets`**: routes the "hostile" families through `HostileTargets`, fixing the defect where
+  `TargetType#matches` tests `ENEMY` / `ENEMY_OR_RIVAL` with a bare `instanceof Enemy` and therefore misses angered
+  wolves / iron golems / polar bears / bees. It also carries the four-argument overload that permits self-targeting.
+  The defect is **adapted around in place rather than rewriting `TargetType`**, so the existing semantics stay
+  byte-for-byte identical and all call sites go through `SelectorTargets`.
+- **New `target.SignSelectionGate`**: the pending record for sign active-skill pre-gating (pure in-memory and
+  transient: `arm` / `isArmed` / `take` / `clear`).
+- **New `economy.StarCoinWalletState`**: the client-side display cache behind the star coin wallet balance bar
+  (primitives only, **deliberately free of any client-only type** so the dedicated server can load it too).
+  It shares a domain with the library's existing `StarEngineEconomy`.
+
+### Engineering
+
+- All three platforms bumped `1.0.0-SNAPSHOT.14 → 1.0.0-SNAPSHOT.15` and were `publishToMavenLocal`'d; `compileJava`
+  passes on all three (including the shared source compiling against **26.1.2**, which is exactly what enforces the
+  "only APIs present in all three MC versions" red line). Jar inspection confirms all seven new classes are present on
+  every platform (including `InternalDamageWindows$Probe` and `SignSelectionGate$Pending`).
+- The consumer `astral_dice` dropped its local copies on both sides: `combat/HostileTargets`,
+  `combat/PlayerHostilityTracker`, `target/SelectorTargets`, `target/SignSelectionGate` and
+  `economy/StarCoinWalletState` were removed, and `combat/PlayerHostilityTrackerEvents` was added as the platform hook.
+
 ## Unreleased (1.0.0-SNAPSHOT.14)
 
 > Convention: follow-up changes to entries already recorded for the current version are merged into the original entry;
