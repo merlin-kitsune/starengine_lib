@@ -3,6 +3,27 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
+## Unreleased (1.0.0-SNAPSHOT.16)
+
+> Convention: follow-up changes to entries already recorded for the current version are merged into the original entry;
+> only the final wording is kept.
+> Version note: `.16` is the **26.1.2 consumer-adoption** release — zero Java source changes in the library; the version
+> number simply advances alongside the consumer's "26.1.2 full port" (the library's convention is one notch per
+> substantive commit).
+
+### Engineering
+
+- All three platform versions bumped from `1.0.0-SNAPSHOT.15` to `1.0.0-SNAPSHOT.16` and published to `mavenLocal`.
+- The consumer `astral_dice`'s **26.1.2 line** adopts library `.16` for the first time: that line was pinned to `.11`
+  and still carried local copies of `combat/HostileTargets`, `combat/PlayerHostilityTracker`, `target/SelectorTargets`
+  and `target/SignSelectionGate` — all four superseded by the `.15` sinking but never synchronised during the freeze.
+  They are removed by this port, their references now point at `com.merlinkitsune.starenginelib.*`, and the platform
+  hook `combat/PlayerHostilityTrackerEvents` plus the `InternalDamageWindows.install(...)` injection are added
+  (structurally identical to the 1.21.1 / 1.20.1 lines).
+- **Zero Java source changes in the library.** The bump is required for the usual reason: this version number does not
+  end in `-SNAPSHOT` (it is a plain version per Maven semantics), so Gradle does not treat it as a changing module —
+  without a bump the consumer would keep resolving the stale jar from `mavenLocal`.
+
 ## Unreleased (1.0.0-SNAPSHOT.15)
 
 > Convention: follow-up changes to entries already recorded for the current version are merged into the original entry;

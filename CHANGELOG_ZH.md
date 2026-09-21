@@ -3,6 +3,23 @@
 > 本文件仅收录中文更新日志；英文版见 [`CHANGELOG.md`](CHANGELOG.md)。
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 
+## 未发布（1.0.0-SNAPSHOT.16）
+
+> 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加「再次修改」条目。
+> 版本号说明：`.16` 是**消费方 26.1.2 线接入版** —— 库内 Java 源码零改动，仅随消费方「26.1.2 完整移植」
+> 一同推进版本号（库的历史口径为「每个实质提交进 1 档」）。
+
+### 工程
+
+- 三平台版本号 `1.0.0-SNAPSHOT.15 → 1.0.0-SNAPSHOT.16` 并已 `publishToMavenLocal`。
+- 消费方 `astral_dice` 的 **26.1.2 线**首次接入本库 `.16`：此前该线 pin 在 `.11`，且**本地仍留有**
+  `combat/HostileTargets`、`combat/PlayerHostilityTracker`、`target/SelectorTargets`、`target/SignSelectionGate`
+  四个已被 `.15` 下沉取代的副本（冻结期未同步）——本次移植一并删除，引用改指 `com.merlinkitsune.starenginelib.*`，
+  并补齐平台挂点 `combat/PlayerHostilityTrackerEvents` 与 `InternalDamageWindows.install(...)` 注入
+  （与 1.21.1 / 1.20.1 两侧同构）。
+- **库内 Java 源码零改动**；必须 bump 的原因同前几版：该版本号不以 `-SNAPSHOT` 结尾（按 Maven 语义属普通版本），
+  Gradle 不把它当作 changing module —— 不 bump 则消费方会继续解析 `mavenLocal` 里的旧 jar。
+
 ## 未发布（1.0.0-SNAPSHOT.15）
 
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加「再次修改」条目。
