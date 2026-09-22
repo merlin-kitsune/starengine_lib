@@ -12,6 +12,21 @@
 > 附注（2026-09-22）：forge 侧「移除 Curios 前置」原拟作 `1.0.1`，现**并入本版本**（见下方「依赖与元数据」）；
 > `1.0.1` 从未推送、从未发布。
 > 快照系列到此终止；自 `1.x` 起适用下方兼容性政策。
+> 附注（2026-09-23）：`neoforge-26.1.2` 侧「补齐钱包账本平台实现」同样原拟作 `1.0.1`，
+> 经用户裁决**并入本版本**（见下方「补齐第三条线缺失的平台实现」）；`1.0.1` 从未推送、从未发布。
+
+### 补齐第三条线缺失的平台实现（并入 `1.0.0`，2026-09-23）
+
+- **为 `neoforge-26.1.2` 线补齐 `NeoForgeEconomyStorage`**（钱包账本的平台存储实现）。首个正式版只在
+  `forge-1.20.1`（`ForgeEconomyStorage`）与 `neoforge-1.21.1`（`NeoForgeEconomyStorage`）提供了该类，
+  导致 `26.1.2` 上 `StarEngineEconomy.isAvailable()` 恒为 `false`：`/starcoin` 命令不注册、拾取星币不会
+  被吸收进钱包、余额条永远是 0。现由 26.1.2 的库入口（`StarEngineLib`）注入该实现，与另两条线完全一致。
+  - 数据布局、键名、`PlayerEvent.Clone` 的余额搬运与离线 `.dat` 解析与 1.21.1 实现**逐字同构**
+    （持久化数据根段 `NeoForgeData`，`starengine_lib/star_coin_wallet`，`balance`/`name`）。
+  - 只吸收了两处 26.1.2 的平台 API 变更（均已在代码内就地注明）：`CompoundTag` 的取值/子标签访问改为
+    `Optional` / `*Or` 系列（不再有 `contains(String,int)` 与返回裸 `CompoundTag` 的 `getCompound(String)`）；
+    命令权限改为**命名权限集**（`CommandSourceStack#hasPermission(int)` 已删除），seam 的数字等级映射到
+    `Permissions.COMMANDS_MODERATOR/GAMEMASTER/ADMIN/OWNER`，从而「等级 ≥ 2 才能用 `/starcoin`」与另两条线等价。
 
 ### 依赖与元数据（并入 `1.0.0`，2026-09-22）
 

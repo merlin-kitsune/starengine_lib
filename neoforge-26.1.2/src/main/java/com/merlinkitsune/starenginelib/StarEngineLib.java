@@ -15,5 +15,9 @@ public final class StarEngineLib {
     public static final String MODID = "starengine_lib";
 
     public StarEngineLib() {
+        // 注入 NeoForge 钱包存储实现（玩家持久化 NBT）——与 1.21.1 / 1.20.1 同构
+        // 2026-09-22 补齐：本线此前漏移植该类 ⇒ StarEngineEconomy.isAvailable() 恒 false，
+        // /starcoin 命令不注册、拾取星币不吸收、余额条恒 0（消费方代码本身是对的）。
+        com.merlinkitsune.starenginelib.economy.NeoForgeEconomyStorage.install();
     }
 }

@@ -304,6 +304,12 @@ neoforge-26.1.2/src/main/java/.../starenginelib/       # 平台专有（5 个文
   不删/不改任何 public 类型、方法、字段、可见性、签名或语义 ⇒ 1.x 内合法；
   唯一代价：若某消费方漏声明却调用该 shim，失败形态会从加载器的「缺必需前置」明确报错
   退化为运行期 `NoClassDefFoundError`。
+- **2026-09-23 并入 `1.0.0`：补齐 `neoforge-26.1.2` 缺失的平台实现** —— 同样原拟作独立的 `1.0.1` 发版，
+  推送前经用户裁决并入 `1.0.0`。首个正式版只在 `forge-1.20.1`（`ForgeEconomyStorage`）与
+  `neoforge-1.21.1`（`NeoForgeEconomyStorage`）提供了钱包账本的平台存储实现，26.1.2 线缺该类 ⇒ 该线
+  `StarEngineEconomy.isAvailable()` 恒为 `false`（`/starcoin` 不注册、拾取星币不被吸收进钱包、余额条恒 0）。
+  ⇒ 与上条同理，**`1.0.1` 从未推送、从未发布**，远端仍只有 tag `1.0.0`，其 Release 附件随本次 push 重刷。
+
 - **快照系列（`1.0.0-SNAPSHOT.*`）已终止，不受上条契约保护** —— 快照之间二进制不兼容（改名前的 `.1`、
   含已删除配置类的 `.2`、缺 `ReadyEffect` 的 `.3`、仍带已删过渡符号的 `.4`、**loaderVersion 写错会被 FML
   整体拒载**的 `.5`），故快照时代的消费方曾必须把区间下界**精确到序号**，否则更早的旧库 jar 会被宽松区间

@@ -334,6 +334,14 @@ neoforge-26.1.2/src/main/java/.../starenginelib/       # platform-specific (5 fi
   semantics is removed or changed — so it is legal within `1.x`. The only cost: if a consumer forgets to declare Curios
   yet calls the shim, the failure degrades from a clear loader-level "missing required dependency" error to a runtime
   `NoClassDefFoundError`.
+- **Merged into `1.0.0` (2026-09-23): the missing platform implementation on the `neoforge-26.1.2` line** — this
+  too was briefly prepared as a separate `1.0.1` release and folded back into `1.0.0` before it was ever pushed.
+  The first stable release shipped the wallet ledger's platform storage only on `forge-1.20.1`
+  (`ForgeEconomyStorage`) and `neoforge-1.21.1` (`NeoForgeEconomyStorage`), so on 26.1.2
+  `StarEngineEconomy.isAvailable()` stayed `false` (no `/starcoin`, picked-up coins not absorbed, balance bar
+  always 0). ⇒ As above, **`1.0.1` has no tag, no Release and no artefact**; the `1.0.0` tag keeps its name
+  and its Release assets are refreshed by this push.
+
 - **The snapshot series (`1.0.0-SNAPSHOT.*`) is terminated and not covered by the contract above** — snapshots were not
   binary compatible with each other (`.1` before the rename, `.2` with a deleted config class, `.3` missing
   `ReadyEffect`, `.4` still carrying deleted transitional symbols, `.5` whose **wrong `loaderVersion` got the whole

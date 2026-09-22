@@ -14,6 +14,25 @@
 > Note (2026-09-22): the Forge-side Curios-prerequisite removal was briefly prepared as `1.0.1`; it is **folded
 > into this version** instead (see "Dependencies and metadata" below). `1.0.1` was never pushed or released.
 > The snapshot series ends here; from `1.x` on, the compatibility policy below governs.
+> Note (2026-09-23): the 26.1.2-side "missing platform implementation" was likewise briefly prepared as
+> `1.0.1`; it is **folded into this version** instead (see "Missing platform implementation on the third
+> line" below). `1.0.1` was never pushed or released.
+
+### Missing platform implementation on the third line (merged into `1.0.0`, 2026-09-23)
+
+- **`NeoForgeEconomyStorage` for the `neoforge-26.1.2` line** — the platform storage implementation of the wallet
+  ledger. The first stable release shipped this class only on `forge-1.20.1` (`ForgeEconomyStorage`) and
+  `neoforge-1.21.1` (`NeoForgeEconomyStorage`), so on `26.1.2` `StarEngineEconomy.isAvailable()` stayed `false`:
+  the `/starcoin` command was never registered, picked-up star coins were not absorbed into the wallet and the
+  balance bar always read 0. The 26.1.2 entry point (`StarEngineLib`) now injects the implementation, exactly like
+  the other two lines.
+  - Data layout, key names, `PlayerEvent.Clone` carry-over and offline `.dat` parsing are **identical** to the
+    1.21.1 implementation (`NeoForgeData` persistent-data root, `starengine_lib/star_coin_wallet`, `balance`/`name`).
+  - Only two 26.1.2 platform API changes had to be absorbed, both documented inline: `CompoundTag` value / sub-tag
+    accessors are now `Optional` / `*Or` flavoured (no `contains(String,int)`, no bare `getCompound(String)`), and
+    command permission became a **named permission set** (`CommandSourceStack#hasPermission(int)` is gone) — the
+    seam's numeric level is mapped onto `Permissions.COMMANDS_MODERATOR/GAMEMASTER/ADMIN/OWNER`, so level ≥ 2 still
+    means "may use `/starcoin`" exactly as on the other two lines.
 
 ### Dependencies and metadata (merged into `1.0.0`, 2026-09-22)
 
