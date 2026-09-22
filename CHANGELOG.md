@@ -3,12 +3,25 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
-## 1.0.1
+## 1.0.0
 
-> Version note: this release contains **no Java source changes at all** — only the dependency declaration
-> and artefact metadata of the `forge-1.20.1` side were touched.
+> Convention: follow-up changes to entries already recorded for the current version are merged into the original entry;
+> only the final wording is kept.
+> Version note: `1.0.0` is the library's **first stable release** — the version number was normalised from the snapshot
+> series' last notch (`1.0.0-SNAPSHOT.16`) with **zero Java source changes**; the artefact files are now
+> `starengine_lib-<platform>-1.0.0.jar`. `.16` was the **26.1.2 consumer-adoption** notch — the version simply advanced
+> alongside the consumer's "26.1.2 full port" (the library's convention is one notch per substantive commit).
+> Note (2026-09-22): the Forge-side Curios-prerequisite removal was briefly prepared as `1.0.1`; it is **folded
+> into this version** instead (see "Dependencies and metadata" below). `1.0.1` was never pushed or released.
+> The snapshot series ends here; from `1.x` on, the compatibility policy below governs.
 
-### Dependencies and metadata
+### Dependencies and metadata (merged into `1.0.0`, 2026-09-22)
+
+> This change was originally prepared as a separate `1.0.1` release. Before it was ever pushed or published the user
+> decided to **fold it into `1.0.0`** — one unreleased change must not occupy two version numbers. `1.0.1` therefore
+> **never existed**: there is no such tag, no such Release and no such artefact. The existing `1.0.0` tag keeps its
+> name, and its Release assets are refreshed by the same CI run that builds this commit (the workflow reuses an
+> existing tag and re-uploads the jars with `--clobber`).
 
 - **The Curios prerequisite is removed on the `forge-1.20.1` side** (user decision, 2026-09-22:
   "make it consistent with the other two versions"):
@@ -24,36 +37,27 @@
     `mandatory=true [5,6)`).
   - ⇒ **None of the three platform jars declares Curios as a prerequisite any more** (the two NeoForge lines
     never did), so the dependency blocks are now uniform across all three.
-- This release is a **pure relaxation**: no public type, method, field or constant is deleted or renamed, and no
-  visibility, signature or semantics changes. It therefore complies with the compatibility policy above, and the
+- This change is a **pure relaxation**: no public type, method, field or constant is deleted or renamed, and no
+  visibility, signature or semantics changes. It therefore complies with the compatibility policy below, and the
   consumer's `starengine_lib_version_range=[1.0.0,2.0)` **needs no tightening** — no consumer code changes either.
   The only cost: if a consumer forgets to declare Curios yet calls the shim, the failure degrades from a clear
   loader-level "missing required dependency" error to a runtime `NoClassDefFoundError`.
-- The three platforms are bumped together ⇒ artefact file names become `starengine_lib-<platform>-1.0.1.jar`.
+- The three platforms always share one version number ⇒ artefact file names stay
+  `starengine_lib-<platform>-1.0.0.jar` — **no `1.0.1` artefact is produced**.
 
-### Engineering
+### Engineering (merged into `1.0.0`)
 
-- Verified: three-platform `./gradlew build publishToMavenLocal` — **BUILD SUCCESSFUL in 9s**; `~/.m2` holds
-  `1.0.1` for all three coordinates; each platform's `pushToPack` pushed its 1.0.1 jar into the corresponding
-  modpack's `mods` folder (**exactly one library jar per pack** — the old 1.0.0 was replaced, so there is no
-  duplicate-`modId` clash).
+- Verified: three-platform `./gradlew build publishToMavenLocal`; `~/.m2` holds `1.0.0` for all three coordinates
+  (the short-lived aborted-release `1.0.1` coordinates were moved out of the local repository); each platform's
+  `pushToPack` pushed its `1.0.0` jar into the corresponding modpack's `mods` folder (**exactly one library jar per
+  pack**, so there is no duplicate-`modId` clash).
 - Jar inspection: the `mods.toml` dependency block on all three platforms is now just "loader + minecraft"
   (1.21.1 = `neoforge [21.1,21.2)`; 1.20.1 = `forge [47.4.10,48)`; 26.1.2 = `neoforge [26.1.0.0,26.2)`),
   with no `modId="curios"` left.
 - **Regression criterion (the important one)**: `forge-1.20.1`'s `CuriosCompat.class` is **byte-identical** to the
-  one in `1.0.0` (3352 B, md5 prefix `d56a57b0`), and **not a single byte differs across all 55 classes** between
-  the old and new jars ⇒ switching to `modCompileOnly` did not change reobf/remapping behaviour; this really is a
+  one in the previous `1.0.0` build (3352 B, md5 prefix `d56a57b0`), and **not a single byte differs across all 55
+  classes** ⇒ switching to `modCompileOnly` did not change reobf/remapping behaviour; this really is a
   metadata-only change.
-
-## 1.0.0
-
-> Convention: follow-up changes to entries already recorded for the current version are merged into the original entry;
-> only the final wording is kept.
-> Version note: `1.0.0` is the library's **first stable release** — the version number was normalised from the snapshot
-> series' last notch (`1.0.0-SNAPSHOT.16`) with **zero Java source changes**; the artefact files are now
-> `starengine_lib-<platform>-1.0.0.jar`. `.16` was the **26.1.2 consumer-adoption** notch — the version simply advanced
-> alongside the consumer's "26.1.2 full port" (the library's convention is one notch per substantive commit).
-> The snapshot series ends here; from `1.x` on, the compatibility policy below governs.
 
 ### Compatibility policy (new, in force from 1.0.0)
 

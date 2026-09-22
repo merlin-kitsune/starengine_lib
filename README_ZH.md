@@ -126,9 +126,9 @@ GameplayConstants.applyConfig(GameplayConfigValues)   → @Mod 构造期注册�
 
 | 平台 | 坐标 | 发布产物 |
 |---|---|---|
-| NeoForge 1.21.1 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.1` | `jar`（NeoForge 编译与生产同为 Mojmap，无需重映射） |
-| Forge 1.20.1 | `com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.1` | `reobfJar`（**生产 SRG jar**） |
-| NeoForge 26.1.2 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.1` | `jar`（与 1.21.1 同理，Mojmap 无需重映射） |
+| NeoForge 1.21.1 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0` | `jar`（NeoForge 编译与生产同为 Mojmap，无需重映射） |
+| Forge 1.20.1 | `com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0` | `reobfJar`（**生产 SRG jar**） |
+| NeoForge 26.1.2 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.0` | `jar`（与 1.21.1 同理，Mojmap 无需重映射） |
 
 > 三侧版本号**同号**，升级时三个 `gradle.properties` 必须一起改。
 
@@ -141,19 +141,19 @@ GameplayConstants.applyConfig(GameplayConfigValues)   → @Mod 构造期注册�
 // NeoForge 1.21.1
 repositories { mavenLocal() }
 dependencies {
-    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.1"
+    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0"
 }
 
 // Forge 1.20.1
 repositories { mavenLocal() }
 dependencies {
-    modImplementation "com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.1"
+    modImplementation "com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0"
 }
 
 // NeoForge 26.1.2
 repositories { mavenLocal() }
 dependencies {
-    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.1"
+    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.0"
 }
 ```
 
@@ -291,15 +291,17 @@ neoforge-26.1.2/src/main/java/.../starenginelib/       # 平台专有（5 个文
   确需破坏性变更时**必须**把第一位加一（`1.x` → `2.x`），并在同一次发布里收紧消费方区间下界 ——
   破坏性变更**不允许**藏在次版本/补丁位里。
   ⇒ 消费方 `mods.toml` 声明 `versionRange="[1.0.0,2.0)"`，即本契约的机器可读表达：任何 `1.x` 版本都可原位替换。
-- **当前版本 = `1.0.1`**。`1.0.0` 是首个正式版（由快照系列的最后一档 `1.0.0-SNAPSHOT.16` 规范化而来，
+- **当前版本 = `1.0.0`**。它是首个正式版（由快照系列的最后一档 `1.0.0-SNAPSHOT.16` 规范化而来，
   **库内 Java 源码零改动**，仅版本号去掉 `-SNAPSHOT` 限定符）。消费方三线的 `starengine_lib_version`
-  与 `starengine_lib_version_range=[1.0.0,2.0)` 与此对应（区间不必随补丁位收紧 —— 见下条）。
-- **`1.0.1`：移除 forge 侧的 Curios 前置**（2026-09-22 用户裁决「使其与另外两个版本保持一致」）。
-  forge 的 `mods.toml` 删掉 `modId="curios"` 依赖块，该侧依赖降为 **`modCompileOnly`** ——
-  `item/CuriosCompat` 只在**编译期**需要 Curios，而库自身零调用它（它只是给消费方用的 shim）。
-  ⇒ **三个平台的库 jar 都不再声明 Curios 前置**（neo 两线本来就没有）；**调用该 shim 的消费方
-  自己声明 curios 必需**（`astral_dice` 的 1.20.1 侧已声明 `mandatory=true [5,6)`）。
-  本次是**纯放宽**，不删/不改任何 public 类型、方法、字段、可见性、签名或语义 ⇒ 1.x 内合法；
+  与 `starengine_lib_version_range=[1.0.0,2.0)` 与此对应。**不存在 `1.0.1`** —— 见下条。
+- **2026-09-22 并入 `1.0.0`：移除 forge 侧的 Curios 前置**（用户裁决「使其与另外两个版本保持一致」）。
+  本改动原拟作独立的 `1.0.1` 发版，推送/发布之前已并入 `1.0.0` ⇒ **`1.0.1` 无 tag、无 Release、无产物**；
+  既有 `1.0.0` tag 名称不变，其 Release 附件由 CI 同批刷新。forge 的 `mods.toml` 删掉 `modId="curios"`
+  依赖块，该侧依赖降为 **`modCompileOnly`** —— `item/CuriosCompat` 只在**编译期**需要 Curios，
+  而库自身零调用它（它只是给消费方用的 shim）。⇒ **三个平台的库 jar 都不再声明 Curios 前置**
+  （neo 两线本来就没有）；**调用该 shim 的消费方自己声明 curios 必需**
+  （`astral_dice` 的 1.20.1 侧已声明 `mandatory=true [5,6)`）。本次是**纯放宽**，
+  不删/不改任何 public 类型、方法、字段、可见性、签名或语义 ⇒ 1.x 内合法；
   唯一代价：若某消费方漏声明却调用该 shim，失败形态会从加载器的「缺必需前置」明确报错
   退化为运行期 `NoClassDefFoundError`。
 - **快照系列（`1.0.0-SNAPSHOT.*`）已终止，不受上条契约保护** —— 快照之间二进制不兼容（改名前的 `.1`、

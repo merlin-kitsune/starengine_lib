@@ -138,9 +138,9 @@ GameplayConstants.applyConfig(GameplayConfigValues)    -> registers the config d
 
 | Platform | Coordinate | Published artifact |
 |---|---|---|
-| NeoForge 1.21.1 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.1` | `jar` (NeoForge compiles and runs on Mojmap, no remapping needed) |
-| Forge 1.20.1 | `com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.1` | `reobfJar` (**production SRG jar**) |
-| NeoForge 26.1.2 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.1` | `jar` (same as 1.21.1: Mojmap, no remapping needed) |
+| NeoForge 1.21.1 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0` | `jar` (NeoForge compiles and runs on Mojmap, no remapping needed) |
+| Forge 1.20.1 | `com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0` | `reobfJar` (**production SRG jar**) |
+| NeoForge 26.1.2 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.0` | `jar` (same as 1.21.1: Mojmap, no remapping needed) |
 
 > The three platforms share **the same version number**; on a version bump all three `gradle.properties` must change together.
 
@@ -154,19 +154,19 @@ environment throw `NoSuchFieldError` because the member names are Mojmap.
 // NeoForge 1.21.1
 repositories { mavenLocal() }
 dependencies {
-    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.1"
+    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0"
 }
 
 // Forge 1.20.1
 repositories { mavenLocal() }
 dependencies {
-    modImplementation "com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.1"
+    modImplementation "com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0"
 }
 
 // NeoForge 26.1.2
 repositories { mavenLocal() }
 dependencies {
-    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.1"
+    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.0"
 }
 ```
 
@@ -318,19 +318,22 @@ neoforge-26.1.2/src/main/java/.../starenginelib/       # platform-specific (5 fi
   **not** allowed to hide in a minor or patch position.
   ⇒ The consumer's `mods.toml` declares `versionRange="[1.0.0,2.0)"`, the machine-readable expression of this contract:
   any `1.x` version can be swapped in place.
-- **Current version = `1.0.1`**. `1.0.0` was the first final release, normalised from the last snapshot of the series,
+- **Current version = `1.0.0`**. It was the first final release, normalised from the last snapshot of the series,
   `1.0.0-SNAPSHOT.16` (**zero Java source changes in the library**; only the `-SNAPSHOT` qualifier was dropped from the
   version number). The consumer's three lines match with `starengine_lib_version` and
-  `starengine_lib_version_range=[1.0.0,2.0)` (the lower bound need not be tightened for a patch release — see below).
-- **`1.0.1`: the Curios prerequisite is removed on the Forge side** (user decision, 2026-09-22: "make it consistent
-  with the other two versions"). The Forge `mods.toml` drops the `modId="curios"` dependency block, and that side's
-  dependency becomes **`modCompileOnly`** — `item/CuriosCompat` needs Curios at **compile time only**, and the library
-  itself never calls it (it is a shim for consumers). ⇒ **None of the three platform jars declares Curios as a
-  prerequisite any more** (the two NeoForge lines never did); **a consumer that calls that shim declares Curios
-  itself** (`astral_dice`'s 1.20.1 side already declares `mandatory=true [5,6)`). This is a **pure relaxation** — no
-  public type, method, field, visibility, signature or semantics is removed or changed — so it is legal within `1.x`.
-  The only cost: if a consumer forgets to declare Curios yet calls the shim, the failure degrades from a clear
-  loader-level "missing required dependency" error to a runtime `NoClassDefFoundError`.
+  `starengine_lib_version_range=[1.0.0,2.0)`. **There is no `1.0.1`** — see the next bullet.
+- **Merged into `1.0.0` (2026-09-22): the Curios prerequisite is removed on the Forge side** (user decision,
+  "make it consistent with the other two versions"). The change was briefly prepared as a separate `1.0.1` release and
+  then folded back into `1.0.0` before it was ever pushed or published, so **`1.0.1` has no tag, no Release and no
+  artefact**; the existing `1.0.0` tag keeps its name and its Release assets are refreshed by CI. The Forge `mods.toml`
+  drops the `modId="curios"` dependency block, and that side's dependency becomes **`modCompileOnly`** —
+  `item/CuriosCompat` needs Curios at **compile time only**, and the library itself never calls it (it is a shim for
+  consumers). ⇒ **None of the three platform jars declares Curios as a prerequisite any more** (the two NeoForge lines
+  never did); **a consumer that calls that shim declares Curios itself** (`astral_dice`'s 1.20.1 side already declares
+  `mandatory=true [5,6)`). This is a **pure relaxation** — no public type, method, field, visibility, signature or
+  semantics is removed or changed — so it is legal within `1.x`. The only cost: if a consumer forgets to declare Curios
+  yet calls the shim, the failure degrades from a clear loader-level "missing required dependency" error to a runtime
+  `NoClassDefFoundError`.
 - **The snapshot series (`1.0.0-SNAPSHOT.*`) is terminated and not covered by the contract above** — snapshots were not
   binary compatible with each other (`.1` before the rename, `.2` with a deleted config class, `.3` missing
   `ReadyEffect`, `.4` still carrying deleted transitional symbols, `.5` whose **wrong `loaderVersion` got the whole
