@@ -3,6 +3,48 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
+## 1.0.1
+
+> Version note: this release contains **no Java source changes at all** — only the dependency declaration
+> and artefact metadata of the `forge-1.20.1` side were touched.
+
+### Dependencies and metadata
+
+- **The Curios prerequisite is removed on the `forge-1.20.1` side** (user decision, 2026-09-22:
+  "make it consistent with the other two versions"):
+  - `forge-1.20.1/src/main/templates/META-INF/mods.toml` drops the `modId="curios"` dependency block
+    (previously `mandatory=true versionRange="[5,6)" ordering="AFTER" side="BOTH"`);
+  - in `forge-1.20.1/build.gradle` the dependency is downgraded from `modImplementation` to **`modCompileOnly`**.
+    A `mod*` configuration (not plain `compileOnly`) is required: MDG LegacyForge only routes `mod*`
+    configurations through `RemappingTransform` (Mojmap/Parchment); otherwise `CuriosCompat`'s
+    `LivingEntity` parameter would not match Curios' method descriptor at compile time.
+  - Rationale: the library **never calls** `item/CuriosCompat` — it is a shim for consumers, and no code path
+    inside the library loads it, so Curios is a **compile-time** dependency on this side only.
+    **A consumer that calls that shim declares Curios itself** (`astral_dice`'s 1.20.1 side already declares
+    `mandatory=true [5,6)`).
+  - ⇒ **None of the three platform jars declares Curios as a prerequisite any more** (the two NeoForge lines
+    never did), so the dependency blocks are now uniform across all three.
+- This release is a **pure relaxation**: no public type, method, field or constant is deleted or renamed, and no
+  visibility, signature or semantics changes. It therefore complies with the compatibility policy above, and the
+  consumer's `starengine_lib_version_range=[1.0.0,2.0)` **needs no tightening** — no consumer code changes either.
+  The only cost: if a consumer forgets to declare Curios yet calls the shim, the failure degrades from a clear
+  loader-level "missing required dependency" error to a runtime `NoClassDefFoundError`.
+- The three platforms are bumped together ⇒ artefact file names become `starengine_lib-<platform>-1.0.1.jar`.
+
+### Engineering
+
+- Verified: three-platform `./gradlew build publishToMavenLocal` — **BUILD SUCCESSFUL in 9s**; `~/.m2` holds
+  `1.0.1` for all three coordinates; each platform's `pushToPack` pushed its 1.0.1 jar into the corresponding
+  modpack's `mods` folder (**exactly one library jar per pack** — the old 1.0.0 was replaced, so there is no
+  duplicate-`modId` clash).
+- Jar inspection: the `mods.toml` dependency block on all three platforms is now just "loader + minecraft"
+  (1.21.1 = `neoforge [21.1,21.2)`; 1.20.1 = `forge [47.4.10,48)`; 26.1.2 = `neoforge [26.1.0.0,26.2)`),
+  with no `modId="curios"` left.
+- **Regression criterion (the important one)**: `forge-1.20.1`'s `CuriosCompat.class` is **byte-identical** to the
+  one in `1.0.0` (3352 B, md5 prefix `d56a57b0`), and **not a single byte differs across all 55 classes** between
+  the old and new jars ⇒ switching to `modCompileOnly` did not change reobf/remapping behaviour; this really is a
+  metadata-only change.
+
 ## 1.0.0
 
 > Convention: follow-up changes to entries already recorded for the current version are merged into the original entry;

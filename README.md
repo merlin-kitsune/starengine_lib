@@ -55,7 +55,7 @@ diverging class. Divergences implemented so far:
 | Client frame delta / render params | `DeltaTracker` + `GuiGraphics` | `float partialTick` | `DeltaTracker` + `GuiGraphicsExtractor` |
 | Effect instance type | `Holder<MobEffect>` | `MobEffect` | `Holder<MobEffect>` |
 | Custom data keys | `DataComponent` (vanilla component system) | `ItemDataKey` (Forge extension point) | `DataComponent` |
-| Curios integration | uses the vanilla/NeoForge capability directly | `CuriosCompat` adapter | uses the vanilla/NeoForge capability directly |
+| Curios integration | uses the vanilla/NeoForge capability directly | `CuriosCompat` adapter (**compile-time only**, not a prerequisite) | uses the vanilla/NeoForge capability directly |
 | Identifier class | `ResourceLocation` | `ResourceLocation` | `Identifier` (renamed in 26.1) |
 | Entity tag test | `EntityType#is(TagKey)` | `EntityType#is(TagKey)` | `EntityType#builtInRegistryHolder().is(TagKey)` |
 
@@ -105,8 +105,9 @@ GameplayConstants.applyConfig(GameplayConfigValues)    -> registers the config d
   and pushes them to `GameplayConstants`; **no restart is needed after changing a config** — the
   `GameplayConstants` fields are non-final runtime reads, so one more push takes effect.
 - Consequently `common` contains neither `net.neoforged.*` / `net.minecraftforge.*` literals nor any
-  third-party config library dependency; the library's only required prerequisites are the loader itself
-  (plus Curios on the Forge side).
+  third-party config library dependency, and **all three platforms' only required prerequisite is the loader
+  itself** — on the Forge side Curios is merely a **compile-time** dependency of `item/CuriosCompat`
+  (`modCompileOnly`); it does not appear in `mods.toml`, so it is not a prerequisite.
 - **The record fields are the contract**: the consumer constructs that record positionally, so
   adding/removing/reordering fields makes the consumer fail **at compile time** (which is precisely why a
   record was chosen over a loose set of getters). Adjusting configurable entries always requires updating both sides.
@@ -137,9 +138,9 @@ GameplayConstants.applyConfig(GameplayConfigValues)    -> registers the config d
 
 | Platform | Coordinate | Published artifact |
 |---|---|---|
-| NeoForge 1.21.1 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0` | `jar` (NeoForge compiles and runs on Mojmap, no remapping needed) |
-| Forge 1.20.1 | `com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0` | `reobfJar` (**production SRG jar**) |
-| NeoForge 26.1.2 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.0` | `jar` (same as 1.21.1: Mojmap, no remapping needed) |
+| NeoForge 1.21.1 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.1` | `jar` (NeoForge compiles and runs on Mojmap, no remapping needed) |
+| Forge 1.20.1 | `com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.1` | `reobfJar` (**production SRG jar**) |
+| NeoForge 26.1.2 | `com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.1` | `jar` (same as 1.21.1: Mojmap, no remapping needed) |
 
 > The three platforms share **the same version number**; on a version bump all three `gradle.properties` must change together.
 
@@ -153,19 +154,19 @@ environment throw `NoSuchFieldError` because the member names are Mojmap.
 // NeoForge 1.21.1
 repositories { mavenLocal() }
 dependencies {
-    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.0"
+    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-1.21.1:1.0.1"
 }
 
 // Forge 1.20.1
 repositories { mavenLocal() }
 dependencies {
-    modImplementation "com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.0"
+    modImplementation "com.merlinkitsune.starenginelib:starengine_lib-forge-1.20.1:1.0.1"
 }
 
 // NeoForge 26.1.2
 repositories { mavenLocal() }
 dependencies {
-    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.0"
+    implementation "com.merlinkitsune.starenginelib:starengine_lib-neoforge-26.1.2:1.0.1"
 }
 ```
 
@@ -291,7 +292,7 @@ forge-1.20.1/src/main/java/.../starenginelib/          # platform-specific (7 fi
 ├── client/ActionBarManager        (float partialTick)
 ├── component/ItemDataKey
 ├── event/ModEffectRemoval         (MobEffect)
-├── item/CuriosCompat
+├── item/CuriosCompat      (Curios is a compile-time dependency only; the library never calls it)
 └── platform/LoaderEvent, LoaderTags
 
 neoforge-26.1.2/src/main/java/.../starenginelib/       # platform-specific (5 files)
@@ -317,10 +318,19 @@ neoforge-26.1.2/src/main/java/.../starenginelib/       # platform-specific (5 fi
   **not** allowed to hide in a minor or patch position.
   ⇒ The consumer's `mods.toml` declares `versionRange="[1.0.0,2.0)"`, the machine-readable expression of this contract:
   any `1.x` version can be swapped in place.
-- **Current version = `1.0.0` (first final release)**, normalised from the last snapshot of the series,
+- **Current version = `1.0.1`**. `1.0.0` was the first final release, normalised from the last snapshot of the series,
   `1.0.0-SNAPSHOT.16` (**zero Java source changes in the library**; only the `-SNAPSHOT` qualifier was dropped from the
-  version number). The consumer's three lines match with `starengine_lib_version=1.0.0` and
-  `starengine_lib_version_range=[1.0.0,2.0)`.
+  version number). The consumer's three lines match with `starengine_lib_version` and
+  `starengine_lib_version_range=[1.0.0,2.0)` (the lower bound need not be tightened for a patch release — see below).
+- **`1.0.1`: the Curios prerequisite is removed on the Forge side** (user decision, 2026-09-22: "make it consistent
+  with the other two versions"). The Forge `mods.toml` drops the `modId="curios"` dependency block, and that side's
+  dependency becomes **`modCompileOnly`** — `item/CuriosCompat` needs Curios at **compile time only**, and the library
+  itself never calls it (it is a shim for consumers). ⇒ **None of the three platform jars declares Curios as a
+  prerequisite any more** (the two NeoForge lines never did); **a consumer that calls that shim declares Curios
+  itself** (`astral_dice`'s 1.20.1 side already declares `mandatory=true [5,6)`). This is a **pure relaxation** — no
+  public type, method, field, visibility, signature or semantics is removed or changed — so it is legal within `1.x`.
+  The only cost: if a consumer forgets to declare Curios yet calls the shim, the failure degrades from a clear
+  loader-level "missing required dependency" error to a runtime `NoClassDefFoundError`.
 - **The snapshot series (`1.0.0-SNAPSHOT.*`) is terminated and not covered by the contract above** — snapshots were not
   binary compatible with each other (`.1` before the rename, `.2` with a deleted config class, `.3` missing
   `ReadyEffect`, `.4` still carrying deleted transitional symbols, `.5` whose **wrong `loaderVersion` got the whole

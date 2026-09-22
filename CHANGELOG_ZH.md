@@ -3,6 +3,40 @@
 > 本文件仅收录中文更新日志；英文版见 [`CHANGELOG.md`](CHANGELOG.md)。
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 
+## 1.0.1
+
+> 版本号说明：本版**不含任何 Java 源码改动**，只改 `forge-1.20.1` 侧的依赖声明与产物元数据。
+
+### 依赖与元数据
+
+- **移除 `forge-1.20.1` 侧的 Curios 前置**（2026-09-22 用户裁决「使其与另外两个版本保持一致」）：
+  - `forge-1.20.1/src/main/templates/META-INF/mods.toml` 删除 `modId="curios"` 依赖块
+    （原为 `mandatory=true versionRange="[5,6)" ordering="AFTER" side="BOTH"`）；
+  - `forge-1.20.1/build.gradle` 的依赖由 `modImplementation` 降为 **`modCompileOnly`**。
+    必须用 `mod*` 配置而非裸 `compileOnly`：MDG LegacyForge 只对 `mod*` 配置走 `RemappingTransform`
+    （Mojmap/Parchment），否则 `CuriosCompat` 的 `LivingEntity` 形参在编译期对不上 Curios 的方法描述符。
+  - 依据：库自身**零调用** `item/CuriosCompat` —— 它只是给消费方用的 shim，库内没有任何代码路径会加载它，
+    故 Curios 在本侧仅是**编译期**依赖。**调用该 shim 的消费方自己声明 curios 必需**
+    （`astral_dice` 的 1.20.1 侧已声明 `mandatory=true [5,6)`）。
+  - ⇒ **三个平台的库 jar 都不再声明 Curios 前置**（neo 两线本来就没有），三线的依赖块形态至此一致。
+- 本版是**纯放宽**：不删除/不改名任何 public 类型、方法、字段、常量，不改可见性/签名/语义
+  ⇒ 符合上述兼容性政策，**消费方 `starengine_lib_version_range=[1.0.0,2.0)` 无需收紧**，也无需改消费方代码。
+  唯一代价：若某消费方漏声明 curios 却调用该 shim，失败形态会从加载器的「缺必需前置」明确报错
+  退化为运行期 `NoClassDefFoundError`。
+- 三平台同号 bump ⇒ 产物文件名变为 `starengine_lib-<平台>-1.0.1.jar`。
+
+### 工程
+
+- 验证：三平台 `./gradlew build publishToMavenLocal` **BUILD SUCCESSFUL in 9s**；`~/.m2` 三坐标均出 `1.0.1`；
+  三平台 `pushToPack` 已把 1.0.1 的三个 jar 推入各自整合包 `mods`（每包**只留一个**库 jar，
+  旧 1.0.0 已被替换 ⇒ 不会出现同 modId 重复 jar）。
+- 开 jar 复核：三平台 `mods.toml` 的依赖块只剩「加载器 + minecraft」
+  （1.21.1 = `neoforge [21.1,21.2)`；1.20.1 = `forge [47.4.10,48)`；26.1.2 = `neoforge [26.1.0.0,26.2)`），
+  已无 `modId="curios"`。
+- **回归判据（关键）**：`forge-1.20.1` 的 `CuriosCompat.class` 与 `1.0.0` **逐字节相同**
+  （3352 B，md5 前缀 `d56a57b0`），且新旧 jar 的 **55 个类无一字节差异**
+  ⇒ 改用 `modCompileOnly` 后 reobf/重映射行为未变，本版确属纯元数据变更。
+
 ## 1.0.0
 
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加「再次修改」条目。

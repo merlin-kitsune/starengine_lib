@@ -24,7 +24,7 @@ sourceSets.main.java.srcDir(project.file('../common/src/main/java'))
 repositories {
     mavenCentral()
     maven { url = uri('https://maven.neoforged.net/releases') }
-    // Curios 1.20.1 来自 Modrinth maven(供 item/CuriosCompat 使用)
+    // Curios 1.20.1 来自 Modrinth maven(仅供 item/CuriosCompat 的**编译期**引用)
     maven { url 'https://api.modrinth.com/maven' }
 }
 
@@ -44,9 +44,15 @@ legacyForge {
 }
 
 dependencies {
-    // Curios API(1.20.1 Forge = Curios 5.x)。
-    // 仅 item/CuriosCompat 需要;由消费方 mod 声明为必需前置,故此处按实现依赖引入。
-    modImplementation "maven.modrinth:curios:IPQlZkz1"
+    // Curios API(1.20.1 Forge = Curios 5.x)—— **仅编译期**(modCompileOnly),不声明为前置。
+    // 依据(2026-09-22 用户裁决「移除 curios api 前置,与另两平台保持一致」):
+    //   ① 库自身**零调用** item/CuriosCompat(它只是给消费方用的 shim),库内无任何路径会加载它
+    //      ⇒ 运行期既不需要 Curios,也不该让本库的 mods.toml 替消费方强制它;
+    //   ② 三平台由此一致(neo 两线本来零 Curios);**调用 CuriosCompat 的消费方自己声明 curios 必需**
+    //      (astral_dice 的 1.20.1 侧已声明 mandatory=true [5,6));
+    //   ③ 必须用 modCompileOnly 而非 compileOnly:MDG LegacyForge 只对 mod* 配置走 RemappingTransform
+    //      (Mojmap/Parchment),否则 CuriosCompat 的 `LivingEntity` 形参在编译期对不上 Curios 的方法描述符。
+    modCompileOnly "maven.modrinth:curios:IPQlZkz1"
 }
 
 // Forge 自身版本门槛(**单一来源 = gradle.properties 的 forge_version**,形如 1.20.1-47.4.10;
