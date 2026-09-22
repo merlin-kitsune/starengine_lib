@@ -55,7 +55,20 @@ jobs:
         #           neoforge-26.1.2/build/libs  普通 jar(Mojmap,无需重映射)
         # 说明:各平台 build 末尾挂了 pushToPack(把 jar 推进本机整合包 mods 目录),
         # 该任务在找不到整合包目录时会自行 warn+skip,CI 上无副作用。
-        run: ./gradlew build
+        # ⚠️ 失败时把日志尾部提炼成 ::error 注解:job log 的下载接口需要仓库 admin 权限,
+        #    而 check-run 的 annotations 端点**无需**凭据即可读(run 摘要页也直接可见)⇒
+        #    把失败尾巴搬进注解,CI 红了时不必先拿 token 才能定位。
+        run: |
+          set -o pipefail
+          LOG="$RUNNER_TEMP/gradle-build.log"
+          if ./gradlew build --stacktrace 2>&1 | tee "$LOG"; then
+            echo "Gradle build OK (all three targets)"
+          else
+            RC=$?
+            TAIL=$(tail -n 80 "$LOG" | sed -e 's/\r//g' -e 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g' | cut -c1-6000)
+            echo "::error title=Gradle build failed (exit $RC)::${TAIL}"
+            exit "$RC"
+          fi
 
       - name: Upload StarEngine Lib JARs
         uses: actions/upload-artifact@v4
