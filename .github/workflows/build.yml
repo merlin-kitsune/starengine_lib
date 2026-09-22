@@ -29,19 +29,30 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup JDK 17 (1.20.1 Forge)
-        # common/src/main/java 会被两个平台各编译一次,Java 17 侧用于强制
+        # common/src/main/java 会被三个平台各编译一次,Java 17 侧用于强制
         # 「共享源码不得使用 Java 21 独有语法」这一约束,故 17 必须存在。
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Setup JDK 25 (26.1.2 NeoForge)
+        # MC 26.1.2 的 javaVersion 主版本为 25(1.21.1 为 21),故第三个子项目的 toolchain 必须是 25。
+        # 本步必须显式存在:根项目虽挂了 foojay 解析器(会自动下载缺失的 JDK),但 Gradle 守护进程
+        # 跑在「最后一个 setup-java 的 JVM」上 —— 若 25 缺失,守护进程就是 17,与 26.1.2 的
+        # ModDevGradle 不匹配;故 25 放在最末,使 JAVA_HOME = 25。
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build with Gradle (both targets)
-        # 两侧产物:neoforge-1.21.1/build/libs 普通 jar(Mojmap,无需重映射)
-        #           forge-1.20.1/build/libs    reobfJar(生产 SRG jar)
+      - name: Build with Gradle (all three targets)
+        # 三侧产物:neoforge-1.21.1/build/libs  普通 jar(Mojmap,无需重映射)
+        #           forge-1.20.1/build/libs     reobfJar(生产 SRG jar)
+        #           neoforge-26.1.2/build/libs  普通 jar(Mojmap,无需重映射)
         # 说明:各平台 build 末尾挂了 pushToPack(把 jar 推进本机整合包 mods 目录),
         # 该任务在找不到整合包目录时会自行 warn+skip,CI 上无副作用。
         run: ./gradlew build
@@ -53,6 +64,7 @@ jobs:
           path: |
             neoforge-1.21.1/build/libs/starengine_lib-*.jar
             forge-1.20.1/build/libs/starengine_lib-*.jar
+            neoforge-26.1.2/build/libs/starengine_lib-*.jar
 
       - name: Read lib version
         id: version
@@ -61,13 +73,21 @@ jobs:
           BASE=${VERSION%%-*}
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          # 守门:base 必须是裸 x.y.z,否则不打 tag
+          if [[ "$BASE" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "skip_tag=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::base version '$BASE' is not a bare x.y.z — tag creation skipped"
+            echo "skip_tag=1" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Create Git tag (main push only, stable versions only)
+        id: tag
         # 仅在 main 分支自动打 tag:tag = 基础版本号(去掉 -SNAPSHOT.x/-rc/-pre 与 +后缀),如 1.0.0。
         # 与消费方 astral_dice 的规则相比多一道守卫:版本号含 '-' 时(即快照版本)不打 tag
         # ——否则 push main 会因为 1.0.0-SNAPSHOT.1 而自动产出 tag "1.0.0",
         # 把尚未定型的快照误标为正式发布,且 tag 难以回收。
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.version.outputs.skip_tag == '0'
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           if [[ "$VERSION" == *-* ]]; then
@@ -83,24 +103,62 @@ jobs:
             git tag -a "$TAG" -m "Release $TAG"
             git push origin "$TAG"
           fi
+          # 交给下一步发布 Release(同 job:tag 已保证存在)
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Create/Update GitHub Release (tag push only, both JARs)
-        # 打 tag(如 1.0.0)后自动发布:附件 = 1.21.1 与 1.20.1 两个 jar。
-        # 本库是消费方 astral_dice 的必需前置,玩家需同时下载本仓 Release 的两个 jar
-        # 与 astral_dice 的 Release 才能启动。
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Create/Update GitHub Release (three JARs)
+        # 发布 Release 的两种来源(均在**同一个 job 内**完成,附件 = 刚构建的三个 jar):
+        #   ① main 分支 push:用上一步新建/已存在的 tag;
+        #   ② ref 本身就是 tag(tag push,或对 tag 手动 workflow_dispatch 补发):直接用 GITHUB_REF 的 tag。
+        # ⚠️ 不能依赖「tag push 再触发一次本 workflow」:由 GITHUB_TOKEN 推送的 tag **不会**触发
+        # workflow(消费方 astral_dice 踩过同一个坑,故同样改为同 job 内发布)。
+        # 已存在同名 Release 时改为「编辑说明 + --clobber 覆盖附件」,保证重复发布幂等、附件与最新构建一致。
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.tag.outputs.tag != '')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${GITHUB_REF#refs/tags/}"
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TAG="${{ steps.tag.outputs.tag }}"
+          fi
+          echo "publishing release for tag: $TAG"
           BUILT="${{ steps.version.outputs.version }}"
+          # ⚠️ 附件必须**按版本号收紧**收集:`build/libs` 会累积历史产物(Gradle 不清理旧输出),
+          #    松散 glob 会把历次版本的 jar 一并传上去(本仓曾因此取到旧 jar 作为判据)。
+          #    收紧后若一个都没命中则直接失败 —— 不静默发布空附件。
+          JARS=()
+          for p in neoforge-1.21.1 forge-1.20.1 neoforge-26.1.2; do
+            for f in "$p"/build/libs/starengine_lib-*"-$BUILT.jar"; do
+              [[ -f "$f" ]] && JARS+=("$f")
+            done
+          done
+          if [[ ${#JARS[@]} -eq 0 ]]; then
+            echo "::error::no jar matching starengine_lib-*-$BUILT.jar was built — aborting"
+            exit 1
+          fi
+          printf 'collected jars: %s\n' "${JARS[*]}"
+          # 说明正文写进临时文件后用 --notes-file 传入(与消费方同一做法)
+          NOTES_FILE="$RUNNER_TEMP/starengine-lib-release-notes-$TAG.md"
+          {
+            printf '## StarEngine Lib %s\n\n' "$TAG"
+            printf '构建版本 / build version: `%s`\n\n' "$BUILT"
+            printf '| 平台 / Platform | 附件 / Asset |\n|---|---|\n'
+            printf '| 1.21.1 (NeoForge) | `starengine_lib-neoforge-1.21.1-%s.jar` |\n' "$BUILT"
+            printf '| 1.20.1 (Forge) | `starengine_lib-forge-1.20.1-%s.jar` |\n' "$BUILT"
+            printf '| 26.1.2 (NeoForge) | `starengine_lib-neoforge-26.1.2-%s.jar` |\n' "$BUILT"
+            printf '\n本库是 **Astral Dice（星之骰戏）的必需前置**：请把与你的 MC 版本对应的这一个 jar 放进 `mods/`，与模组同批更新（两者必须成对，否则整合包会拒绝启动）。\n\n'
+            printf 'This library is a **required prerequisite of Astral Dice**: drop the jar matching your MC version into `mods/` and update it together with the mod (they must stay in pairs, otherwise the pack refuses to start).\n\n'
+            printf '兼容性契约见 README §6；自 `1.0.0` 起，同一主版本号内不做破坏性更新。\n'
+          } > "$NOTES_FILE"
+          echo "release notes: $(wc -c < "$NOTES_FILE") bytes"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" --title "StarEngine Lib $TAG" --notes "StarEngine Lib $TAG — 1.21.1 (NeoForge) + 1.20.1 (Forge); build version $BUILT"
+            gh release edit "$TAG" --title "StarEngine Lib $TAG" --notes-file "$NOTES_FILE"
+            gh release upload "$TAG" "${JARS[@]}" --clobber
           else
             gh release create "$TAG" \
-              neoforge-1.21.1/build/libs/starengine_lib-*.jar \
-              forge-1.20.1/build/libs/starengine_lib-*.jar \
+              "${JARS[@]}" \
               --title "StarEngine Lib $TAG" \
-              --notes "StarEngine Lib $TAG — 1.21.1 (NeoForge) + 1.20.1 (Forge); build version $BUILT" \
+              --notes-file "$NOTES_FILE" \
               --latest
           fi
