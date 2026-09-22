@@ -3,26 +3,44 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
-## Unreleased (1.0.0-SNAPSHOT.16)
+## 1.0.0
 
 > Convention: follow-up changes to entries already recorded for the current version are merged into the original entry;
 > only the final wording is kept.
-> Version note: `.16` is the **26.1.2 consumer-adoption** release — zero Java source changes in the library; the version
-> number simply advances alongside the consumer's "26.1.2 full port" (the library's convention is one notch per
-> substantive commit).
+> Version note: `1.0.0` is the library's **first stable release** — the version number was normalised from the snapshot
+> series' last notch (`1.0.0-SNAPSHOT.16`) with **zero Java source changes**; the artefact files are now
+> `starengine_lib-<platform>-1.0.0.jar`. `.16` was the **26.1.2 consumer-adoption** notch — the version simply advanced
+> alongside the consumer's "26.1.2 full port" (the library's convention is one notch per substantive commit).
+> The snapshot series ends here; from `1.x` on, the compatibility policy below governs.
+
+### Compatibility policy (new, in force from 1.0.0)
+
+- **Within one major version (first number unchanged — currently `1.x`) breaking changes are forbidden.** The library
+  must not delete or rename any public type, method, field or constant, and must not change its visibility, signature
+  or established semantics. Only **additions** (new types, new members, new optional entry points) and behaviour fixes
+  that preserve the contract are allowed.
+- **A breaking change must bump the first number (`1.x` → `2.x`)**, and must tighten the consumers'
+  `starengine_lib_version_range` lower bound in the same release. Breaking changes must never hide in a minor/patch slot.
+- ⇒ The consumer range `[1.0.0,2.0)` is the machine-readable form of this contract: any `1.x` release can replace
+  another in place, without touching consumer code.
+- This **supersedes** the earlier `gradle.properties` note that "the SNAPSHOT series' API carries no
+  semantic-compatibility promise" — that exemption covered the snapshot series only, and no longer applies from
+  `1.0.0` on.
 
 ### Engineering
 
-- All three platform versions bumped from `1.0.0-SNAPSHOT.15` to `1.0.0-SNAPSHOT.16` and published to `mavenLocal`.
-- The consumer `astral_dice`'s **26.1.2 line** adopts library `.16` for the first time: that line was pinned to `.11`
+- All three platform versions normalised from `1.0.0-SNAPSHOT.16` to **`1.0.0`** and published to `mavenLocal`
+  (`./gradlew publishToMavenLocal`); the three jars are
+  `starengine_lib-{neoforge-1.21.1,forge-1.20.1,neoforge-26.1.2}-1.0.0.jar`.
+- The consumer `astral_dice`'s **26.1.2 line** adopts this release (the `.16` code) for the first time: that line was pinned to `.11`
   and still carried local copies of `combat/HostileTargets`, `combat/PlayerHostilityTracker`, `target/SelectorTargets`
   and `target/SignSelectionGate` — all four superseded by the `.15` sinking but never synchronised during the freeze.
   They are removed by this port, their references now point at `com.merlinkitsune.starenginelib.*`, and the platform
   hook `combat/PlayerHostilityTrackerEvents` plus the `InternalDamageWindows.install(...)` injection are added
   (structurally identical to the 1.21.1 / 1.20.1 lines).
-- **Zero Java source changes in the library.** The bump is required for the usual reason: this version number does not
-  end in `-SNAPSHOT` (it is a plain version per Maven semantics), so Gradle does not treat it as a changing module —
-  without a bump the consumer would keep resolving the stale jar from `mavenLocal`.
+- **Zero Java source changes in the library.** Publishing a new version number is required for the usual reason: the
+  version does not end in `-SNAPSHOT` (a plain version per Maven semantics), so Gradle does not treat it as a changing
+  module — without a bump the consumer would keep resolving the stale jar from `mavenLocal`.
 
 ## Unreleased (1.0.0-SNAPSHOT.15)
 

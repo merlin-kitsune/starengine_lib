@@ -93,11 +93,12 @@ tasks.withType(JavaCompile).configureEach {
 
 // === 编译产物部署 ===
 // 与另两个平台一致:本库是消费方 astral_dice 的必需前置(mods.toml required),
-// build 后默认推送整合包 jar;开发分支(noPackPushBranches)上跳过。
+// build 后默认推送整合包 jar;只有发布线分支(packPushBranches = ['main'])推送,
+// 其余分支与无法判定分支的场景一律跳过(约定全文见 neoforge-1.21.1/build.gradle)。
 def packModsDir = file('D:/.minecraft/versions/26.1.2 模组测试/mods')
 def jarArchiveProvider = tasks.named('jar').flatMap { it.archiveFile }
 
-def noPackPushBranches = ['main']
+def packPushBranches = ['main']
 def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')
 def dotGitEntry = rootProject.file('.git')
 
@@ -134,8 +135,8 @@ tasks.register('pushToPack') {
                 logger.lifecycle('pushToPack: skipped — 无法确定当前 git 分支(detached HEAD 或无 .git);如需强制推送请加 -PdeployToPack')
                 return
             }
-            if (noPackPushBranches.contains(branch)) {
-                logger.lifecycle("pushToPack: skipped — 分支 '${branch}' 按约定不推送整合包;如需强制推送请加 -PdeployToPack")
+            if (!packPushBranches.contains(branch)) {
+                logger.lifecycle("pushToPack: skipped — 分支 '${branch}' 不在整合包推送白名单 ${packPushBranches} 内;如需强制推送请加 -PdeployToPack")
                 return
             }
         }

@@ -3,22 +3,37 @@
 > 本文件仅收录中文更新日志；英文版见 [`CHANGELOG.md`](CHANGELOG.md)。
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 
-## 未发布（1.0.0-SNAPSHOT.16）
+## 1.0.0
 
 > 约定：对当前版本已记录条目的后续改动，直接合并进原条目，仅保留改动后的最终版本，不追加「再次修改」条目。
-> 版本号说明：`.16` 是**消费方 26.1.2 线接入版** —— 库内 Java 源码零改动，仅随消费方「26.1.2 完整移植」
-> 一同推进版本号（库的历史口径为「每个实质提交进 1 档」）。
+> 版本号说明：`1.0.0` 是库的**首个正式版** —— 由快照系列的最后一档 `1.0.0-SNAPSHOT.16` 规范化而来，
+> **库内 Java 源码零改动**，产物文件名变为 `starengine_lib-<平台>-1.0.0.jar`。`.16` 即**消费方 26.1.2 线接入**
+> 那一档（仅随消费方「26.1.2 完整移植」推进版本号；库的历史口径为「每个实质提交进 1 档」）。
+> 快照系列到此终止；自 `1.x` 起适用下方兼容性政策。
+
+### 兼容性政策（新增，自 1.0.0 起生效）
+
+- **同一主版本号内（第一位数字不变，当前 = `1.x`）禁止任何破坏性更新。** 不得删除或改名任何 public 类型、
+  方法、字段、常量，也不得改变其可见性、签名或既有语义；只允许**新增**（新类型、新成员、新可选入口）
+  与不改变契约的行为修正。
+- **破坏性变更必须升第一位（`1.x` → `2.x`）**，并在同一次发布里收紧消费方 `starengine_lib_version_range` 的下界。
+  破坏性变更**不允许**藏在次版本/补丁位里。
+- ⇒ 消费方区间 `[1.0.0,2.0)` 即本政策的机器可读表达：任何 `1.x` 版本都可原位替换，无需改动消费方代码。
+- 本条**取代**此前 `gradle.properties` 里「SNAPSHOT 系列的 API 不作语义化兼容承诺」的口径 —— 该豁免仅覆盖
+  快照系列，自 `1.0.0` 起不再适用。
 
 ### 工程
 
-- 三平台版本号 `1.0.0-SNAPSHOT.15 → 1.0.0-SNAPSHOT.16` 并已 `publishToMavenLocal`。
-- 消费方 `astral_dice` 的 **26.1.2 线**首次接入本库 `.16`：此前该线 pin 在 `.11`，且**本地仍留有**
+- 三平台版本号由 `1.0.0-SNAPSHOT.16` 规范化为 **`1.0.0`** 并已 `publishToMavenLocal`
+  （`./gradlew publishToMavenLocal`）；三个 jar 为
+  `starengine_lib-{neoforge-1.21.1,forge-1.20.1,neoforge-26.1.2}-1.0.0.jar`。
+- 消费方 `astral_dice` 的 **26.1.2 线**首次接入本版本（即原 `.16` 代码）：此前该线 pin 在 `.11`，且**本地仍留有**
   `combat/HostileTargets`、`combat/PlayerHostilityTracker`、`target/SelectorTargets`、`target/SignSelectionGate`
   四个已被 `.15` 下沉取代的副本（冻结期未同步）——本次移植一并删除，引用改指 `com.merlinkitsune.starenginelib.*`，
   并补齐平台挂点 `combat/PlayerHostilityTrackerEvents` 与 `InternalDamageWindows.install(...)` 注入
   （与 1.21.1 / 1.20.1 两侧同构）。
-- **库内 Java 源码零改动**；必须 bump 的原因同前几版：该版本号不以 `-SNAPSHOT` 结尾（按 Maven 语义属普通版本），
-  Gradle 不把它当作 changing module —— 不 bump 则消费方会继续解析 `mavenLocal` 里的旧 jar。
+- **库内 Java 源码零改动**；必须发布新版本号的原因同前几版：该版本号不以 `-SNAPSHOT` 结尾（按 Maven 语义属普通版本），
+  Gradle 不把它当作 changing module —— 不发布新版本号则消费方会继续解析 `mavenLocal` 里的旧 jar。
 
 ## 未发布（1.0.0-SNAPSHOT.15）
 

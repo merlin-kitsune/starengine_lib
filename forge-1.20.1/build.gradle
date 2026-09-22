@@ -107,18 +107,19 @@ tasks.withType(JavaCompile).configureEach {
 // 整合包会因「缺失必需前置」直接拒绝启动。故库的 build 也默认推送。
 // 约定与消费方一致:推送 reobfJar(SRG 生产 jar),旧版清理按 starengine_lib- 前缀。
 //
-// ⚠️ 约定(2026-09-12):**不在开发分支上推送整合包。**
+// ⚠️ 约定(2026-09-22 修订为**白名单**,与消费方 astral_dice 同构):**只有发布线分支推送整合包。**
 //   本库与消费方 astral_dice 必须**成对匹配**才能进整合包:
 //   消费方在编译期锁定库版本(starengine_lib_version),并在 mods.toml 声明库版本区间;
 //   库 jar 与 mod jar 只要一侧先单独演进,整合包就会进入"不匹配"状态,
 //   表现为启动期 NoClassDefFoundError(包名/类名对不上)或「缺必需前置」。
-//   消费方已在 multi-dev-next 上停推整合包,故**本库同步停推**(main 列入下方黑名单),
-//   让整合包整体冻结在最后一个匹配的版本组合上,而不是被单侧覆盖。
+//   本库发布线 = `main`;消费方发布线 = `multi-main`。2026-09-12 起曾因消费方开发线冻结而一并停推,
+//   现消费方多线已收编进 multi-main,两侧同步解冻。
 //   判定依据是当前 git 分支(读 .git/HEAD,兼容普通仓库与 worktree):
-//     · 分支在 noPackPushBranches 中 → 跳过 pushToPack,只打日志,不算失败
-//     · 无法确定分支(detached HEAD/无 .git,如 CI) → 同样跳过(取安全侧)
+//     · 分支出现在 packPushBranches(**白名单**)中 → 允许 pushToPack
+//     · 分支不在白名单 / 无法确定分支(detached HEAD/无 .git,如 CI) → 跳过,只打日志,不算失败
 //     · 传 -PdeployToPack 或 -PpackPush → 强制推送(手动出包用;务必与消费方成对推送)
-//   恢复自动推送:把分支从 noPackPushBranches 移除。
+//   **白名单优于黑名单**:新建分支默认落在"不推送"一侧,不会因为忘了登记而误推、误删整合包里的正式 jar。
+//   需要推送时:把分支加进白名单;或单次用 -PdeployToPack 强制。
 def packModsDir = file('D:/.minecraft/versions/1.20.1 模组测试/mods')
 def prodJarArchiveProvider = tasks.named('reobfJar').flatMap { it.archiveFile }
 
@@ -128,7 +129,7 @@ def prodJarArchiveProvider = tasks.named('reobfJar').flatMap { it.archiveFile }
 //   ② 不把 Provider/闭包塞进 configuration-cache,避免缓存序列化限制与行为漂移。
 // dotGitEntry 是配置期算好的 File(可序列化),执行期读它即可 —— 普通仓库这里就是
 // .git 目录;worktree 下它是**文件**,内容为 `gitdir: <path>`,真正的 HEAD 在 gitdir 下。
-def noPackPushBranches = ['main']
+def packPushBranches = ['main']
 def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')
 def dotGitEntry = rootProject.file('.git')
 
@@ -167,8 +168,8 @@ tasks.register('pushToPack') {
                 logger.lifecycle('pushToPack: skipped — 无法确定当前 git 分支(detached HEAD 或无 .git);如需强制推送请加 -PdeployToPack')
                 return
             }
-            if (noPackPushBranches.contains(branch)) {
-                logger.lifecycle("pushToPack: skipped — 分支 '${branch}' 按约定不推送整合包;如需强制推送请加 -PdeployToPack")
+            if (!packPushBranches.contains(branch)) {
+                logger.lifecycle("pushToPack: skipped — 分支 '${branch}' 不在整合包推送白名单 ${packPushBranches} 内;如需强制推送请加 -PdeployToPack")
                 return
             }
         }
