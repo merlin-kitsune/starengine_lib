@@ -2,6 +2,7 @@ package com.merlinkitsune.starenginelib.combat;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.NeutralMob;
+import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 
@@ -9,26 +10,38 @@ import net.minecraft.world.entity.player.Player;
  * 「敌对目标」判定的**唯一入口**(2026-09-14 用户裁决,必须遵守)。
  * (2026-09-22 自主模组 {@code combat.HostileTargets} 下沉;口径逐字未变。)
  *
- * <p>口径:{@code 敌对目标 = 敌对生物 ∪ 已被激怒的中立生物 ∪ 消费方额外声明的实体}
+ * <p><b>口径(2026-09-24 用户裁决重写)</b>:
+ * {@code 敌对目标 = 敌对生物 ∪ 中立生物(宠物除外) ∪ 消费方额外声明的实体}
  * <ul>
  *   <li><b>敌对生物</b>:{@link Enemy} 实例 —— 含 {@code Monster} 全部子类,以及
  *       {@code Ghast}/{@code Phantom}/{@code EnderDragon}/{@code Slime}(含岩浆怪)/
  *       {@code Shulker}/{@code Zoglin}/{@code Hoglin}。**平静的敌对类中立生物
  *       (末影人/僵尸猪灵/猪灵/猪灵蛮兵/疣猪兽)同样计入** —— 它们本身就是 {@link Enemy}。</li>
- *   <li><b>已被激怒的中立生物</b>:{@link NeutralMob} 实例且 {@code isAngry()}
- *       (= {@code getRemainingPersistentAngerTime() > 0},被激怒后 20~39 秒)为真。
- *       全原版 {@code NeutralMob} 直接实现者仅 6 个:{@code EnderMan}/{@code ZombifiedPiglin}
- *       (二者即 {@link Enemy})与 <b>狼 / 铁傀儡 / 北极熊 / 蜜蜂</b>(仅这 4 个靠 anger 判定进入敌对集合)。</li>
- *   <li><b>消费方额外声明的实体</b>:见下方「额外敌对判定 seam」—— 既非 {@link Enemy}、也非
- *       「被激怒的中立生物」,但消费方在玩法上需要当敌对处理的实体(典型:<b>测试用假人</b>这类靶子,
- *       它既不是 {@code Enemy} 也不会被激怒,却必须能被「需要敌对目标」的效果选中)。</li>
+ *   <li><b>中立生物(宠物除外)</b>:{@link NeutralMob} 实例,且**不是已被驯服的宠物**
+ *       (见 {@link #isTamedPet})。全原版 {@code NeutralMob} 直接实现者仅 6 个:
+ *       {@code EnderMan}/{@code ZombifiedPiglin}(二者即 {@link Enemy},由上一条覆盖)
+ *       与 <b>狼 / 铁傀儡 / 北极熊 / 蜜蜂</b>。
+ *       ⚠️ <b>与旧口径的唯一差别</b>:旧版要求中立生物**已被激怒**({@code isAngry()})才计入,
+ *       自本条起**一律计入** —— 于是「未被激怒的狼/铁傀儡/北极熊/蜜蜂」现在也算敌对目标。</li>
+ *   <li><b>消费方额外声明的实体</b>:见下方「额外敌对判定 seam」。</li>
  * </ul>
  *
- * <p>熊猫/骆驼/山羊/羊驼/行商羊驼/海豚/狐狸等**不是** {@code NeutralMob},永不视为敌对目标
- * (除非消费方通过 seam 显式声明)。
+ * <p><b>「宠物除外」的判据与其范围</b>:宠物 = <b>已被驯服的 {@link TamableAnimal}</b>
+ * (狼 / 猫 / 鹦鹉)。之所以只用这一个判据:① 它在三平台(1.20.1 / 1.21.1 / 26.1.2)签名一致,
+ * 而本类的宿主是三平台**共用**的 common 源码;
+ * ② 语义上也无遗漏 —— 另一个「有主人」的家族 {@code AbstractHorse}(马/驴/骡/骆驼,
+ * 旧版经 {@code OwnableEntity#getOwnerUUID} 判定)**本身不是 {@code NeutralMob}**,
+ * 根本不在上一条的集合里,无需在此排除。
+ * (注:{@code OwnableEntity} 在 26.1.2 已改为 {@code EntityReference} 体系、不再有
+ * {@code getOwnerUUID()},进一步说明不宜跨平台使用它。)
+ * <p>实测影响面:唯一「既是 {@code NeutralMob} 又是 {@code TamableAnimal}」的原版生物就是**狼**,
+ * 故本条实际等价于「狼在**未驯服**时算敌对目标」。
+ *
+ * <p>熊猫/骆驼/山羊/羊驼/行商羊驼/海豚/狐狸等**不是** {@code NeutralMob}(原版未把它们标记为中立生物),
+ * 故不在本口径内 —— 若将来需要把它们也算作敌对目标,须另行裁决并在此扩展。
  *
  * <p><b>禁止</b>在玩法代码里再写裸的 {@code instanceof Enemy} 来判定敌对目标 —— 那会漏掉
- * 被激怒的狼/铁傀儡/北极熊/蜜蜂。新增判定一律调用本类。
+ * 中立生物。新增判定一律调用本类。
  *
  * <p><b>敌对玩家(用户裁决,全局规则)</b>:带「视谁为敌」上下文的
  * {@link #isHostile(Entity, Entity)} 额外把「非同队伍、且曾主动攻击过观察者的玩家」计入敌对目标
@@ -44,9 +57,14 @@ import net.minecraft.world.entity.player.Player;
  * 消费方无处插手。故库内只留判定接口,由消费方在启动时把实现注入进来(与
  * {@link InternalDamageWindows} 同构,同一套「seam + 消费方 static 注入」范式)。
  *
- * <p><b>未注入时的默认语义</b>:不额外认定任何实体为敌对(逐字保持既有口径)。这是安全方向 ——
- * 漏注入只会退回原有行为,不会凭空把中立生物变成敌对目标。消费方应尽早在模组构造/公共初始化中
- * 调用 {@link #installExtraHostileProbe}。
+ * <p><b>未注入时的默认语义</b>:不额外认定任何实体为敌对。这是安全方向 ——
+ * 漏注入只会退回原有行为,不会凭空把中立生物变成敌对目标。
+ *
+ * <h2>⚠️ 兼容性:本轮口径重写不属于「新增」</h2>
+ * 库自 {@code 1.0.0} 起的 1.x 契约只允许「新增」与「不改变既有语义的行为修正」,而本条**改变了
+ * {@code isHostile} 的既有语义**(中立生物不再需要被激怒)。⇒ 按契约,这部分改动**正式发版时
+ * 必须升主版本**(1.x → 2.x)并同批收紧消费方 {@code starengine_lib_version_range} 的下界。
+ * (2026-09-24 用户裁决:本批**先只改代码、不 bump 不发布**,与后续改动一起发版。)
  */
 public final class HostileTargets {
     private HostileTargets() {
@@ -74,18 +92,28 @@ public final class HostileTargets {
         extraHostileProbe = (probe != null) ? probe : target -> false;
     }
 
-    /** 该实体是否为「敌对目标」(敌对生物,或已被激怒的中立生物,或消费方额外声明的实体)。 */
+    /**
+     * 是否为「已被驯服的宠物」—— 本口径下**唯一**会被排除出敌对集合的中立生物类别。
+     *
+     * <p>只用 {@link TamableAnimal#isTame()}:该判据在三平台签名一致(common 源码的硬约束);详见类注释。
+     */
+    private static boolean isTamedPet(Entity entity) {
+        return entity instanceof TamableAnimal tamable && tamable.isTame();
+    }
+
+    /** 该实体是否为「敌对目标」(敌对生物,或中立生物且非已驯服宠物,或消费方额外声明的实体)。 */
     public static boolean isHostile(Entity entity) {
         if (entity == null) return false;
         if (entity instanceof Enemy) return true;
-        if (entity instanceof NeutralMob neutral && neutral.isAngry()) return true;
-        // 前两条是原版口径的早退路径(覆盖绝大多数目标);仅未命中者才落到消费方注入的判定。
+        // 中立生物:一律计入(不再要求已被激怒),但排除已被驯服的宠物。
+        if (entity instanceof NeutralMob && !isTamedPet(entity)) return true;
+        // 以上是原版口径的早退路径(覆盖绝大多数目标);仅未命中者才落到消费方注入的判定。
         return extraHostileProbe.isHostile(entity);
     }
 
     /**
      * 带「视谁为敌」上下文的敌对判定(全局规则,见类注释):
-     * {@code 敌对目标 = 敌对生物 ∪ 已被激怒的中立生物 ∪ 消费方额外声明的实体
+     * {@code 敌对目标 = 敌对生物 ∪ 中立生物(宠物除外) ∪ 消费方额外声明的实体
      * ∪ 「非同队伍,且曾主动攻击过 viewer 的玩家」}。
      *
      * <p>{@code viewer} 是本次判定的观察者(如溅射施放者、被攻击方);viewer 不是玩家时无法确定
@@ -93,7 +121,7 @@ public final class HostileTargets {
      */
     public static boolean isHostile(Entity viewer, Entity target) {
         if (target == null) return false;
-        // 原有语义:敌对生物 ∪ 已被激怒的中立生物 (∪ 消费方额外声明的实体)
+        // 原有语义:敌对生物 ∪ 中立生物(宠物除外) ∪ 消费方额外声明的实体
         if (isHostile(target)) return true;
         if (!(viewer instanceof Player viewerPlayer)) return false;
         if (!(target instanceof Player targetPlayer)) return false;

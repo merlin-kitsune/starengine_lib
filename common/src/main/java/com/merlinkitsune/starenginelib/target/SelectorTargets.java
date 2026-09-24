@@ -10,10 +10,10 @@ import net.minecraft.world.entity.player.Player;
  *
  * <h2>为什么需要它（2026-09-18 用户实测缺陷）</h2>
  * 本库 {@link TargetType} 的 {@code matches} 对「敌对」族（{@code ENEMY} / {@code ENEMY_OR_RIVAL}）
- * 只做裸的 {@code instanceof Enemy} 判定，而全局口径（见 {@link HostileTargets} 类注释，
- * 2026-09-14 用户裁决）是 {@code 敌对目标 = 敌对生物 ∪ 已被激怒的中立生物}：
- * 全原版 {@code NeutralMob} 的直接实现者里，<b>狼 / 铁傀儡 / 北极熊 / 蜜蜂</b> 四个只能靠 anger 判定
- * 进入敌对集合。⇒ 被激怒的铁傀儡在选择器里被判「不可选 / 对准错误目标」，与主线版本口径不符。
+ * 只做裸的 {@code instanceof Enemy} 判定，而全局口径（**见 {@link HostileTargets} 类注释**，
+ * 2026-09-14 用户裁决、2026-09-24 重写）不只认敌对生物：全原版 {@code NeutralMob} 的直接实现者里，
+ * <b>狼 / 铁傀儡 / 北极熊 / 蜜蜂</b> 四个不属 {@code Enemy}。⇒ 若不委托统一入口，它们在选择器里会被判
+ * 「不可选 / 对准错误目标」，与全局口径不符。
  *
  * <p>本类把「敌对」族并到唯一入口 {@link HostileTargets#isHostile(net.minecraft.world.entity.Entity)}
  * 上，其余类型仍走库的基础语义。
@@ -21,14 +21,14 @@ import net.minecraft.world.entity.player.Player;
  * <h2>口径（逐条）</h2>
  * <ul>
  *   <li>{@link TargetType#ENEMY} → {@code HostileTargets.isHostile(target)}
- *       （敌对生物 ∪ 已被激怒的中立生物；**不含玩家**，与库的「仅敌对生物」一致）；</li>
+ *       （口径见 {@link HostileTargets} 类注释；**不含玩家**，与库的「仅敌对生物」一致）；</li>
  *   <li>{@link TargetType#ENEMY_OR_RIVAL} → {@code HostileTargets.isHostile(target)}
  *       ∪ 库 {@code matches} 的「非队友玩家」分支；</li>
  *   <li>{@link TargetType#PLAYER} / {@link TargetType#LIVING} → 原样交给库的 {@code matches}。</li>
  * </ul>
  *
  * <p><b>禁止</b>在选择器代码里再直接调用 {@code targetType.matches(...)} 或写裸的
- * {@code instanceof Enemy} —— 那会漏掉被激怒的中立生物；新增判定一律调用本类。
+ * {@code instanceof Enemy} —— 那会漏掉中立生物；新增判定一律调用本类。
  */
 public final class SelectorTargets {
     private SelectorTargets() {
