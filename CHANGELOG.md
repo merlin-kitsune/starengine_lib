@@ -3,22 +3,25 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
-## 1.0.2
+## 1.0.3
 
-> Version note: this release **skips `1.0.1`** — that number was never pushed and never published
-> (its two batches of changes were each merged into `1.0.0`), yet the local mavenLocal still holds a
-> 2026-09-22 `1.0.1` directory left over from the withdrawn version. Reusing that number would be an
-> in-place overwrite, and consumers could silently resolve to the stale jar (corrected only by
-> `--refresh-dependencies`), so this change ships as `1.0.2`.
+> Version note: this release **absorbs the planned `1.0.2`** — that number was committed but **never
+> pushed and never published** (its content is the "extra hostile seam" section below), and per this
+> repo's convention ("changes to an unreleased version are merged into the original entry") it is
+> folded into this release in full ⇒ `1.0.2` therefore **never existed** (no tag, no Release, no
+> artefact). The earlier `1.0.1` was likewise never published (merged into `1.0.0`).
+> ⚠️ This release contains **one semantic change** (see "Hostile-target criterion rewritten"): under
+> the `1.x` compatibility contract it should have raised the major version; by user ruling of
+> 2026-09-24 it ships as a **gameplay-ruling exception** in a patch slot.
 
-### New features
+### New features (planned `1.0.2`)
 
 - **`combat/HostileTargets` gains an "extra hostile" injection seam** (`ExtraHostileProbe` /
   `installExtraHostileProbe`): a consumer can install a predicate declaring which entities should
-  additionally count as hostile targets, so entities that are **neither `Enemy` nor an angered
-  neutral mob** (typically third-party training dummies) are correctly recognised by effects that
-  require a hostile target.
-  - The criterion becomes `Enemy ∪ angered NeutralMob ∪ entities declared by the consumer`; the
+  additionally count as hostile targets, so entities that are **neither `Enemy` nor a neutral mob**
+  (typically third-party training dummies) are correctly recognised by effects that require a
+  hostile target.
+  - The criterion becomes `the previous criterion ∪ entities declared by the consumer`; the
     two-argument overload `isHostile(viewer, target)` inherits the extension through its existing
     delegation.
   - Why a seam instead of a hard-coded rule: this criterion is called not only by consumer gameplay
@@ -31,13 +34,39 @@
     additionally treated as hostile) — the safe direction: a missing injection only falls back to the
     existing behaviour and can never turn a neutral mob hostile by accident.
 
+### ⚠️ Semantic change: hostile-target criterion rewritten (user ruling 2026-09-24)
+
+- **`HostileTargets.isHostile` changes from `Enemy ∪ angered neutral mob` to
+  `Enemy ∪ neutral mob (pets excluded)`**:
+  - **The "must be angered" requirement is dropped** (previously `NeutralMob#isAngry()` =
+    `getRemainingPersistentAngerTime() > 0`, 20–39 s after being provoked) ⇒ unangered
+    **wolf / iron golem / polar bear / bee** now also count as hostile targets.
+  - **"Pets excluded" is added**: tamed `TamableAnimal` (wolf / cat / parrot) no longer count. **A
+    single predicate `TamableAnimal#isTame()` is used** — it has an identical signature across all
+    three platforms (a hard constraint for the shared common sources); the other "owned" family
+    `AbstractHorse` (horse / donkey / mule / camel) **is not a `NeutralMob`** and therefore never was
+    in this set; and `OwnableEntity` was changed in 26.1.2 to the `EntityReference` system, which no
+    longer has `getOwnerUUID()`.
+  - **Measured impact**: the only vanilla mob that is **both** a `NeutralMob` and a `TamableAnimal`
+    is the **wolf** ⇒ this entry is effectively "a wolf counts as hostile while **untamed**, and
+    stops counting once tamed".
+  - **Why this is a "semantic change"**: the `1.x` compatibility contract only permits "additions"
+    and "behaviour fixes that do not change existing semantics", while this changes the existing
+    semantics of `isHostile` ⇒ it should raise the major version (`1.x` → `2.x`). By user ruling of
+    2026-09-24 it ships as an **exception** in the patch slot `1.0.3` (rationale: this library's only
+    real consumer is the consumer mod in this repo, and the criterion was ruled directly by the
+    user).
+  - Supporting change: the class comment of `target/SelectorTargets` no longer restates the
+    criterion and now points at `HostileTargets` (avoiding two places to maintain).
+
 ### Compatibility
 
-- **Purely additive**: a new nested type `ExtraHostileProbe`, a new static method
+- **Addition** (seam): a new nested type `ExtraHostileProbe`, a new static method
   `installExtraHostileProbe`, and one extra probe call at the end of the existing `isHostile(Entity)`.
-  No existing public API is removed, renamed or re-signatured, and behaviour with no injection is
-  unchanged ⇒ compliant with the `1.x` compatibility contract. The lower bound of the consumer's
-  `starengine_lib_version_range` moves to `[1.0.2,2.0)` with this release.
+  No existing public API is removed, renamed or re-signatured.
+- ⚠️ **Semantic change** (the entry above): under the contract it should raise the major version;
+  by user ruling it ships as an **exception** in a patch slot ⇒ the lower bound of the consumer's
+  `starengine_lib_version_range` moves to `[1.0.3,2.0)` with this release.
 
 ## 1.0.0
 
