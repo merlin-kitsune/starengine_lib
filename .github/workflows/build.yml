@@ -53,8 +53,8 @@ jobs:
         # 三侧产物:neoforge-1.21.1/build/libs  普通 jar(Mojmap,无需重映射)
         #           forge-1.20.1/build/libs     reobfJar(生产 SRG jar)
         #           neoforge-26.1.2/build/libs  普通 jar(Mojmap,无需重映射)
-        # 说明:各平台 build 末尾挂了 pushToPack(把 jar 推进本机整合包 mods 目录),
-        # 该任务在找不到整合包目录时会自行 warn+skip,CI 上无副作用。
+        # 说明:各平台 build **只产出 jar**,不触碰任何整合包目录
+        # (2026-09-24 移除了 pushToPack —— 本库现由消费方 astral_dice 以 JarJar 内嵌携带)。
         # ⚠️ 失败时把**失败块**(`FAILURE: Build failed with an exception.` 起)提炼成 ::error 注解:
         #    job log 的下载接口需要仓库 admin 权限(403),而 check-run 的 annotations 端点
         #    **无需**凭据即可读(run 摘要页也直接可见)⇒ 把失败块搬进注解,CI 红了时不必先拿 token。

@@ -107,106 +107,14 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
-// === 编译产物部署 ===
-// 本库是消费方 astral_dice 的必需前置(mods.toml mandatory=true)。
-// 消费方 build 会自动把自身 jar 推送进整合包;库若不在同一时机进入整合包,
-// 整合包会因「缺失必需前置」直接拒绝启动。故库的 build 也默认推送。
-// 约定与消费方一致:推送 reobfJar(SRG 生产 jar),旧版清理按 starengine_lib- 前缀。
-//
-// ⚠️ 约定(2026-09-22 修订为**白名单**,与消费方 astral_dice 同构):**只有发布线分支推送整合包。**
-//   本库与消费方 astral_dice 必须**成对匹配**才能进整合包:
-//   消费方在编译期锁定库版本(starengine_lib_version),并在 mods.toml 声明库版本区间;
-//   库 jar 与 mod jar 只要一侧先单独演进,整合包就会进入"不匹配"状态,
-//   表现为启动期 NoClassDefFoundError(包名/类名对不上)或「缺必需前置」。
-//   本库发布线 = `main`;消费方发布线 = `multi-main`。2026-09-12 起曾因消费方开发线冻结而一并停推,
-//   现消费方多线已收编进 multi-main,两侧同步解冻。
-//   判定依据是当前 git 分支(读 .git/HEAD,兼容普通仓库与 worktree):
-//     · 分支出现在 packPushBranches(**白名单**)中 → 允许 pushToPack
-//     · 分支不在白名单 / 无法确定分支(detached HEAD/无 .git,如 CI) → 跳过,只打日志,不算失败
-//     · 传 -PdeployToPack 或 -PpackPush → 强制推送(手动出包用;务必与消费方成对推送)
-//   **白名单优于黑名单**:新建分支默认落在"不推送"一侧,不会因为忘了登记而误推、误删整合包里的正式 jar。
-//   需要推送时:把分支加进白名单;或单次用 -PdeployToPack 强制。
-def packModsDir = file('D:/.minecraft/versions/1.20.1 模组测试/mods')
-def prodJarArchiveProvider = tasks.named('reobfJar').flatMap { it.archiveFile }
-
-// --- 整合包推送的 git 分支守卫(配合上方约定) ---
-// 分支判定放在**执行期**(见 pushToPack 的 doLast),不做配置期求值:
-//   ① 每次构建都读当时的 .git/HEAD,切分支后立即生效,不存在配置缓存陈旧问题;
-//   ② 不把 Provider/闭包塞进 configuration-cache,避免缓存序列化限制与行为漂移。
-// dotGitEntry 是配置期算好的 File(可序列化),执行期读它即可 —— 普通仓库这里就是
-// .git 目录;worktree 下它是**文件**,内容为 `gitdir: <path>`,真正的 HEAD 在 gitdir 下。
-def packPushBranches = ['main']
-def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')
-def dotGitEntry = rootProject.file('.git')
-
-tasks.register('pushToPack') {
-    group = 'build'
-    description = 'Copy the built production (SRG) jar into the Forge test pack mods folder, removing stale versions. Skipped on development branches; force with -PdeployToPack.'
-    dependsOn tasks.named('reobfJar')
-    doLast {
-        // --- 约定:开发分支不推送整合包(见文件顶部「编译产物部署」) ---
-        if (!forcePackPush) {
-            // 执行期读取当前分支:普通仓库 .git 是目录;worktree 的 .git 是文件,内容记录 gitdir
-            def readGitBranch = { File dotGit ->
-                File headFile = null
-                if (dotGit.isDirectory()) {
-                    def hf = new File(dotGit, 'HEAD')
-                    headFile = hf.isFile() ? hf : null
-                } else if (dotGit.isFile()) {
-                    def m = dotGit.text.trim() =~ /^gitdir:\s*(.+)$/
-                    if (m.find()) {
-                        def gd = new File(m.group(1).trim())
-                        if (!gd.isAbsolute()) {
-                            gd = new File(dotGit.parentFile, m.group(1).trim())
-                        }
-                        def hf = new File(gd, 'HEAD')
-                        headFile = hf.isFile() ? hf : null
-                    }
-                }
-                if (headFile == null) {
-                    return ''
-                }
-                def s = headFile.text.trim()
-                s.startsWith('ref: refs/heads/') ? s.substring('ref: refs/heads/'.length()) : ''
-            }
-            def branch = readGitBranch(dotGitEntry)
-            if (branch.isEmpty()) {
-                logger.lifecycle('pushToPack: skipped — 无法确定当前 git 分支(detached HEAD 或无 .git);如需强制推送请加 -PdeployToPack')
-                return
-            }
-            if (!packPushBranches.contains(branch)) {
-                logger.lifecycle("pushToPack: skipped — 分支 '${branch}' 不在整合包推送白名单 ${packPushBranches} 内;如需强制推送请加 -PdeployToPack")
-                return
-            }
-        }
-        def jarFile = prodJarArchiveProvider.get().asFile
-        if (!jarFile.exists()) {
-            logger.warn("pushToPack: built jar not found, skipped: ${jarFile}")
-            return
-        }
-        if (!packModsDir.exists()) {
-            def packRoot = packModsDir.getParentFile()
-            if (packRoot == null || !packRoot.exists()) {
-                logger.warn("pushToPack: pack dir not found, skipped: ${packModsDir}")
-                return
-            }
-            packModsDir.mkdirs()
-        }
-        def stale = packModsDir.listFiles().findAll { File f ->
-            f.isFile() && f.name.startsWith('starengine_lib-') && f.name.endsWith('.jar')
-        }
-        stale.each { it.delete() }
-        def target = new File(packModsDir, jarFile.name)
-        target.withOutputStream { out ->
-            jarFile.withInputStream { inp -> inp.transferTo(out) }
-        }
-        logger.lifecycle("pushToPack: pushed ${jarFile.name} -> ${packModsDir}")
-    }
-}
-
-tasks.named('build') {
-    finalizedBy tasks.named('pushToPack')
-}
+// === 编译产物部署（`pushToPack` 已于 2026-09-24 移除）===
+// 本库曾是消费方 astral_dice 的**外置**必需前置，故 `build` 会经 `pushToPack` 把库 jar 推进三个
+// 整合包的 mods 目录。自消费方改为 **JarJar 内嵌**本库后，整合包里**不应**再出现独立库 jar：
+// FML 的 JarInJar 选择器按 **modId** 识别同源件，顶层 mod 列表里若已有同名 mod，内嵌副本会被丢弃
+// （独立 jar 版本更旧时反而会**盖掉**内嵌版 ⇒ NoSuchMethodError / NoClassDefFoundError）。
+// ⇒ 已移除该任务，连同只服务于它的 `packModsDir` / `packPushBranches` / `forcePackPush` /
+//   `dotGitEntry` / `jarArchiveProvider`；`build` 不再读写任何整合包目录。
+// 需要单独放一份库 jar 做 A/B 时请从本仓 Release 手动取用，**不要**恢复自动推送。
 
 idea {
     module {

@@ -122,7 +122,7 @@ GameplayConstants.applyConfig(GameplayConfigValues)    -> registers the config d
 ## 4. Building and publishing
 
 ```bash
-# Build all three platforms (and auto-push to the three modpacks' mods folders, see below)
+# Build all three platforms (jar only; no longer auto-pushed to the modpacks, see §4.3)
 ./gradlew build
 
 # Build a single platform
@@ -171,8 +171,9 @@ dependencies {
 ```
 
 This library is currently published to **mavenLocal** only (there is no remote Maven), so a consumer either
-clones this repository locally and runs `./gradlew publishToMavenLocal`, or takes the jar straight from this
-repository's Releases and drops it into the modpack. For CI, see §4.4.
+clones this repository locally and runs `./gradlew publishToMavenLocal` (for CI, see §4.4), or embeds this library
+via **JarJar** in its own `build.gradle` — which is what `astral_dice` now does. Therefore a modpack should
+**not** carry a standalone library jar any more (see §4.3).
 
 The `mods.toml` on both sides must declare it as a required dependency:
 
@@ -221,27 +222,23 @@ The `mods.toml` on both sides must declare it as a required dependency:
 > After modifying library code, the consumer's Gradle caches the mavenLocal resolution result.
 > If the consumer does not pick up the new version, use `--refresh-dependencies` or bump `lib_version`.
 
-### 4.3 Automatic deployment to the modpacks
+### 4.3 Relationship with the modpacks (`pushToPack` removed on 2026-09-24)
 
-After `build`, `pushToPack` pushes this library's jar into the three modpacks' mods folders, consistent with the
-consumer Astral Dice's existing "build means deploy" convention.
-⚠️ **Only the release-line branch pushes** (`packPushBranches = ['main']`, structurally identical to the consumer's
-`packPushBranches = ['multi-main']`): every other branch (including worktree `wt/*`) and any situation where the branch
-cannot be determined (detached HEAD / CI) is skipped with a log line only — not counted as a failure. Force a single run
-with `-PdeployToPack` (always push **as a pair** with the consumer, otherwise the modpack ends up in a
-"library and mod do not match" state).
+This library **no longer** writes anything into any modpack `mods` folder. The former `pushToPack` task (hooked at the
+end of `build`, whitelisted by `packPushBranches = ['main']`, forceable with `-PdeployToPack`) has been removed
+entirely, along with the symbols that served it only: `packModsDir` / `packPushBranches` / `forcePackPush` /
+`dotGitEntry` / `jarArchiveProvider`.
 
-| Platform | Target directory | Pushed artifact |
-|---|---|---|
-| NeoForge | `D:/.minecraft/versions/狐の航空学 Voxy Edition/mods` | `jar` |
-| Forge | `D:/.minecraft/versions/1.20.1 模组测试/mods` | `reobfJar` |
-| NeoForge 26.1.2 | `D:/.minecraft/versions/26.1.2 模组测试/mods` | `jar` |
+Reason: since 2026-09-24 the consumer `astral_dice` **embeds** this library via **JarJar**. FML's JarInJar selector
+identifies same-origin artefacts by **modId** — if a mod with the same id is already present at the top level, the
+nested copy is discarded (the selector only logs one WARN: `JarJarSelector … which was passed in as source`).
+⇒ A standalone library jar left in a modpack therefore takes precedence; when it is older than the embedded copy the
+symptom is a plain `NoSuchMethodError` / `NoClassDefFoundError` — and it is **hard to diagnose**, because it looks
+exactly like "the library did not ship with the mod".
 
-Old versions are cleaned up by the `starengine_lib-` prefix; when the modpack root does not exist (e.g. on CI)
-the step is skipped automatically.
-
-> **This step cannot be skipped**: the consumer declares `starengine_lib` as a required dependency, so a missing
-> library jar inside a modpack makes that modpack refuse to start.
+Correct practice: **keep only `astral_dice-*.jar` in the modpack `mods` folder**; the library rides inside it.
+If you really need a standalone jar for A/B testing, download it from this repository's Releases and delete it
+afterwards.
 
 ### 4.4 CI / automatic releases (GitHub Actions)
 

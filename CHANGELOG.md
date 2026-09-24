@@ -3,6 +3,27 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
+## Unreleased
+
+> The entries below are **build-script / documentation** changes with no effect on jar contents, so
+> **no version bump and no re-release**; a version number will be assigned together with the next release
+> that actually changes an artefact.
+
+### Engineering
+
+- **Removed the `pushToPack` task (automatic deployment into the modpacks).** The whole "build artifact
+  deployment" section was deleted from all three `build.gradle` files, together with the symbols that served it
+  only: `packModsDir` / `packPushBranches` / `forcePackPush` / `dotGitEntry` / `jarArchiveProvider`;
+  `build` no longer reads or writes any modpack folder (the former `finalizedBy tasks.named('pushToPack')`
+  is gone as well).
+  Reason: the consumer `astral_dice` now **embeds** this library via **JarJar** ⇒ a standalone library jar left in
+  a modpack is picked up first by FML's JarInJar selector and shadows the embedded copy (when the standalone one is
+  older this shows up as `NoSuchMethodError` / `NoClassDefFoundError`).
+- Updated `README_ZH` / `README` accordingly (§4.3 rewritten as "Relationship with the modpacks", the build-command
+  comment, and the consumer notes) plus the build-step comment in `.github/workflows/build.yml`. Historical
+  `pushToPack` mentions in older CHANGELOG sections (e.g. `1.0.0`) are **kept** as a record of the period when that
+  mechanism existed.
+
 ## 1.0.3
 
 > Version note: this release **absorbs the planned `1.0.2`** — that number was committed but **never

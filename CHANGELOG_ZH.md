@@ -3,6 +3,22 @@
 > 本文件仅收录中文更新日志；英文版见 [`CHANGELOG.md`](CHANGELOG.md)。
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 
+## 未发布
+
+> 下列为**构建脚本 / 文档**改动，不涉及 jar 内容 ⇒ **不 bump 版本号、不重新发布**；
+> 等下一次确有产物变化时，再随那一版一起定版本号。
+
+### 工程
+
+- **移除 `pushToPack`（自动推送到整合包）任务**：三平台 `build.gradle` 的整节「编译产物部署」删除，
+  连同只服务于它的 `packModsDir` / `packPushBranches` / `forcePackPush` / `dotGitEntry` /
+  `jarArchiveProvider`；`build` 不再读写任何整合包目录（原 `finalizedBy tasks.named('pushToPack')` 一并去掉）。
+  原因：消费方 `astral_dice` 已改用 **JarJar 内嵌**本库 ⇒ 整合包里再出现独立库 jar 会被 FML 的
+  JarInJar 选择器优先采用并盖掉内嵌副本（独立件更旧时表现为 `NoSuchMethodError` / `NoClassDefFoundError`）。
+- 同步更新 `README_ZH` / `README`（§4.3 改写为「与整合包的关系」、构建命令注释、消费方式说明）
+  与 `.github/workflows/build.yml` 的构建步骤注释。CHANGELOG 自身历史条目（`1.0.0` 等）中关于
+  `pushToPack` 的描述**保留**，作为该机制存在时期的记录。
+
 ## 1.0.3
 
 > 版本号说明:本版**合并了原拟的 `1.0.2`** —— 该号已提交但**从未推送、从未发布**(其内容即下方

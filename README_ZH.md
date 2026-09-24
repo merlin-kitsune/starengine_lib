@@ -110,7 +110,7 @@ GameplayConstants.applyConfig(GameplayConfigValues)   → @Mod 构造期注册�
 ## 4. 构建与发布
 
 ```bash
-# 构建三个平台（并自动推送到三个整合包 mods 目录，见下）
+# 构建三个平台（只产出 jar；不再自动推送到整合包，见 §4.3）
 ./gradlew build
 
 # 仅构建单平台
@@ -158,8 +158,8 @@ dependencies {
 ```
 
 本库目前只发布到 **mavenLocal**（无远程 maven），因此消费方要么本机 clone 本仓并
-`./gradlew publishToMavenLocal`，要么从本仓 Release 直接取 jar 放进整合包。
-CI 场景见 §4.4。
+`./gradlew publishToMavenLocal`（CI 场景见 §4.4），要么由消费方在 `build.gradle` 里用 **JarJar 内嵌**
+本库 —— `astral_dice` 现采此方式，故整合包里**不应**再单独放库 jar（见 §4.3）。
 
 两侧 `mods.toml` 需声明为必需前置：
 
@@ -203,24 +203,20 @@ CI 场景见 §4.4。
 > 修改库代码后，消费方 Gradle 会缓存 mavenLocal 的解析结果。
 > 若消费方未取到新版本，用 `--refresh-dependencies` 或 bump `lib_version`。
 
-### 4.3 自动部署到整合包
+### 4.3 与整合包的关系（`pushToPack` 已于 2026-09-24 移除）
 
-`build` 结束后 `pushToPack` 会把本库 jar 推送到三个整合包 mods 目录，
-与消费方 Astral Dice 既有的「build 即部署」约定一致。
-⚠️ **只有发布线分支推送**（`packPushBranches = ['main']`，与消费方 `packPushBranches = ['multi-main']` 同构）：
-其余分支（含 worktree 的 `wt/*`）与无法判定分支的场景（detached HEAD / CI）一律跳过，只打日志、不算失败；
-单次强制用 `-PdeployToPack`（务必与消费方**成对**推送，否则整合包会进入「库与模组不匹配」状态）。
+本库**不再**向任何整合包 `mods` 目录写入内容 —— 原先的 `pushToPack` 任务（`build` 末尾触发、
+白名单 `packPushBranches = ['main']`、可 `-PdeployToPack` 强推）已整体删除，连同只服务于它的
+`packModsDir` / `packPushBranches` / `forcePackPush` / `dotGitEntry` / `jarArchiveProvider`。
 
-| 平台 | 目标目录 | 推送产物 |
-|---|---|---|
-| NeoForge | `D:/.minecraft/versions/狐の航空学 Voxy Edition/mods` | `jar` |
-| Forge | `D:/.minecraft/versions/1.20.1 模组测试/mods` | `reobfJar` |
-| NeoForge 26.1.2 | `D:/.minecraft/versions/26.1.2 模组测试/mods` | `jar` |
+原因：消费方 `astral_dice` 自 2026-09-24 起改用 **JarJar 内嵌**本库。FML 的 JarInJar 选择器按
+**modId** 识别同源件 —— 顶层 mod 列表里若已存在同名 mod，内嵌的那份会被丢弃
+（选择器只留一条 WARN：`JarJarSelector … which was passed in as source`）。
+⇒ 整合包里若再出现独立库 jar，它会被优先采用；版本比内嵌件旧时直接表现为
+`NoSuchMethodError` / `NoClassDefFoundError`，且**很难定位**（现象与「库没随模组更新」完全相同）。
 
-旧版本清理按 `starengine_lib-` 前缀；整合包根目录不存在时（如 CI）自动跳过。
-
-> **这一步不可省略**：消费方把 `starengine_lib` 声明为必需前置，
-> 库 jar 不在整合包内会导致整合包直接拒绝启动。
+正确做法：**整合包 `mods` 目录里只放 `astral_dice-*.jar`**，库由它内嵌携带。
+确需单独放一份库 jar 做 A/B 时，请从本仓 Release 手动取用，用完即删。
 
 ### 4.4 CI / 自动 Release（GitHub Actions）
 

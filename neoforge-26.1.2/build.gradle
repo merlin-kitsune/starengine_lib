@@ -91,83 +91,14 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
-// === 编译产物部署 ===
-// 与另两个平台一致:本库是消费方 astral_dice 的必需前置(mods.toml required),
-// build 后默认推送整合包 jar;只有发布线分支(packPushBranches = ['main'])推送,
-// 其余分支与无法判定分支的场景一律跳过(约定全文见 neoforge-1.21.1/build.gradle)。
-def packModsDir = file('D:/.minecraft/versions/26.1.2 模组测试/mods')
-def jarArchiveProvider = tasks.named('jar').flatMap { it.archiveFile }
-
-def packPushBranches = ['main']
-def forcePackPush = project.hasProperty('deployToPack') || project.hasProperty('packPush')
-def dotGitEntry = rootProject.file('.git')
-
-tasks.register('pushToPack') {
-    group = 'build'
-    description = 'Copy the built jar into the 26.1.2 pack mods folder, removing stale versions. Skipped on development branches; force with -PdeployToPack.'
-    dependsOn tasks.named('jar')
-    doLast {
-        if (!forcePackPush) {
-            def readGitBranch = { File dotGit ->
-                File headFile = null
-                if (dotGit.isDirectory()) {
-                    def hf = new File(dotGit, 'HEAD')
-                    headFile = hf.isFile() ? hf : null
-                } else if (dotGit.isFile()) {
-                    def m = dotGit.text.trim() =~ /^gitdir:\s*(.+)$/
-                    if (m.find()) {
-                        def gd = new File(m.group(1).trim())
-                        if (!gd.isAbsolute()) {
-                            gd = new File(dotGit.parentFile, m.group(1).trim())
-                        }
-                        def hf = new File(gd, 'HEAD')
-                        headFile = hf.isFile() ? hf : null
-                    }
-                }
-                if (headFile == null) {
-                    return ''
-                }
-                def s = headFile.text.trim()
-                s.startsWith('ref: refs/heads/') ? s.substring('ref: refs/heads/'.length()) : ''
-            }
-            def branch = readGitBranch(dotGitEntry)
-            if (branch.isEmpty()) {
-                logger.lifecycle('pushToPack: skipped — 无法确定当前 git 分支(detached HEAD 或无 .git);如需强制推送请加 -PdeployToPack')
-                return
-            }
-            if (!packPushBranches.contains(branch)) {
-                logger.lifecycle("pushToPack: skipped — 分支 '${branch}' 不在整合包推送白名单 ${packPushBranches} 内;如需强制推送请加 -PdeployToPack")
-                return
-            }
-        }
-        def jarFile = jarArchiveProvider.get().asFile
-        if (!jarFile.exists()) {
-            logger.warn("pushToPack: built jar not found, skipped: ${jarFile}")
-            return
-        }
-        if (!packModsDir.exists()) {
-            def packRoot = packModsDir.getParentFile()
-            if (packRoot == null || !packRoot.exists()) {
-                logger.warn("pushToPack: pack dir not found, skipped: ${packModsDir}")
-                return
-            }
-            packModsDir.mkdirs()
-        }
-        def stale = packModsDir.listFiles().findAll { File f ->
-            f.isFile() && f.name.startsWith('starengine_lib-') && f.name.endsWith('.jar')
-        }
-        stale.each { it.delete() }
-        def target = new File(packModsDir, jarFile.name)
-        target.withOutputStream { out ->
-            jarFile.withInputStream { inp -> inp.transferTo(out) }
-        }
-        logger.lifecycle("pushToPack: pushed ${jarFile.name} -> ${packModsDir}")
-    }
-}
-
-tasks.named('build') {
-    finalizedBy tasks.named('pushToPack')
-}
+// === 编译产物部署（`pushToPack` 已于 2026-09-24 移除）===
+// 本库曾是消费方 astral_dice 的**外置**必需前置，故 `build` 会经 `pushToPack` 把库 jar 推进三个
+// 整合包的 mods 目录。自消费方改为 **JarJar 内嵌**本库后，整合包里**不应**再出现独立库 jar：
+// FML 的 JarInJar 选择器按 **modId** 识别同源件，顶层 mod 列表里若已有同名 mod，内嵌副本会被丢弃
+// （独立 jar 版本更旧时反而会**盖掉**内嵌版 ⇒ NoSuchMethodError / NoClassDefFoundError）。
+// ⇒ 已移除该任务，连同只服务于它的 `packModsDir` / `packPushBranches` / `forcePackPush` /
+//   `dotGitEntry` / `jarArchiveProvider`；`build` 不再读写任何整合包目录。
+// 需要单独放一份库 jar 做 A/B 时请从本仓 Release 手动取用，**不要**恢复自动推送。
 
 idea {
     module {
