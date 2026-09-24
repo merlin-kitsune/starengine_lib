@@ -3,6 +3,42 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
+## 1.0.2
+
+> Version note: this release **skips `1.0.1`** — that number was never pushed and never published
+> (its two batches of changes were each merged into `1.0.0`), yet the local mavenLocal still holds a
+> 2026-09-22 `1.0.1` directory left over from the withdrawn version. Reusing that number would be an
+> in-place overwrite, and consumers could silently resolve to the stale jar (corrected only by
+> `--refresh-dependencies`), so this change ships as `1.0.2`.
+
+### New features
+
+- **`combat/HostileTargets` gains an "extra hostile" injection seam** (`ExtraHostileProbe` /
+  `installExtraHostileProbe`): a consumer can install a predicate declaring which entities should
+  additionally count as hostile targets, so entities that are **neither `Enemy` nor an angered
+  neutral mob** (typically third-party training dummies) are correctly recognised by effects that
+  require a hostile target.
+  - The criterion becomes `Enemy ∪ angered NeutralMob ∪ entities declared by the consumer`; the
+    two-argument overload `isHostile(viewer, target)` inherits the extension through its existing
+    delegation.
+  - Why a seam instead of a hard-coded rule: this criterion is called not only by consumer gameplay
+    code but also by the **library's own** `target/SelectorTargets` for selectable-target checks
+    (client raycast / client radius highlight / server-side confirmation) — the decision point lives
+    inside the library, where a consumer cannot reach; and "which third-party entity counts as
+    hostile" is consumer gameplay policy that the library must not know about. The pattern mirrors
+    the existing `combat/InternalDamageWindows`.
+  - **With nothing installed the previous semantics are preserved verbatim** (no entity is
+    additionally treated as hostile) — the safe direction: a missing injection only falls back to the
+    existing behaviour and can never turn a neutral mob hostile by accident.
+
+### Compatibility
+
+- **Purely additive**: a new nested type `ExtraHostileProbe`, a new static method
+  `installExtraHostileProbe`, and one extra probe call at the end of the existing `isHostile(Entity)`.
+  No existing public API is removed, renamed or re-signatured, and behaviour with no injection is
+  unchanged ⇒ compliant with the `1.x` compatibility contract. The lower bound of the consumer's
+  `starengine_lib_version_range` moves to `[1.0.2,2.0)` with this release.
+
 ## 1.0.0
 
 > Convention: follow-up changes to entries already recorded for the current version are merged into the original entry;
