@@ -1,7 +1,7 @@
 package com.merlinkitsune.starenginelib.item;
 
 /**
- * 本模组稀有度等级的**平台接线** —— 把 {@link Rarity} 里的 4 个等级扩展进原版
+ * 本模组稀有度等级的**平台接线** —— 把 {@link Rarity} 里的 5 个等级扩展进原版
  * {@code net.minecraft.world.item.Rarity}，并提供运行期取回扩展常量的访问器。
  *
  * <h2>等级名 / 颜色 / 序列化名都在 {@link Rarity}</h2>
@@ -36,6 +36,9 @@ public final class AstralRarities {
     public static final net.minecraft.world.item.Rarity PINNACLE = net.minecraft.world.item.Rarity.create(
             Rarity.PINNACLE.constantName(), Rarity.PINNACLE.styleModifier());
 
+    public static final net.minecraft.world.item.Rarity BIZARRE = net.minecraft.world.item.Rarity.create(
+            Rarity.BIZARRE.constantName(), Rarity.BIZARRE.styleModifier());
+
     private AstralRarities() {
     }
 
@@ -57,5 +60,10 @@ public final class AstralRarities {
     /** 巅峰（亮红）。 */
     public static net.minecraft.world.item.Rarity pinnacle() {
         return PINNACLE;
+    }
+
+    /** 奇特（彩虹/流动）。 */
+    public static net.minecraft.world.item.Rarity bizarre() {
+        return BIZARRE;
     }
 }

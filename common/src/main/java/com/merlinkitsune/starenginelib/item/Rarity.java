@@ -12,7 +12,7 @@ import net.minecraft.network.chat.TextColor;
  * <p>它们不是独立枚举，而是被**扩展进原版 {@code net.minecraft.world.item.Rarity}**：
  * <ul>
  *   <li><b>NeoForge（1.21.1 / 26.1.2）</b>：消费方 mod 在自己的 {@code neoforge.mods.toml} 里声明
- *       {@code enumExtensions="META-INF/enumextensions.json"}，该 json 的 4 条 entry 通过
+ *       {@code enumExtensions="META-INF/enumextensions.json"}，该 json 的 5 条 entry 通过
  *       {@code AstralRarities} 的 {@link net.neoforged.fml.common.asm.enumextension.EnumProxy} 字段
  *       取得**序列化名**与**染色函数**；FML 的 {@code RuntimeEnumExtender} 在 {@code Rarity} 类加载时注入常量；</li>
  *   <li><b>Forge（1.20.1）</b>：{@code Rarity} 实现 {@code IExtensibleEnum}，由 {@code AstralRarities}
@@ -36,7 +36,15 @@ public enum Rarity {
     /** 传奇 —— 金。 */
     LEGENDARY("ASTRAL_DICE_LEGENDARY", "astral_dice:legendary", 0xFFC24B),
     /** 巅峰 —— 亮红。 */
-    PINNACLE("ASTRAL_DICE_PINNACLE", "astral_dice:pinnacle", 0xFF4D4D);
+    PINNACLE("ASTRAL_DICE_PINNACLE", "astral_dice:pinnacle", 0xFF4D4D),
+    /**
+     * 奇特 —— **彩虹（流动）**。
+     *
+     * <p>⚠️ 本档**没有**单一颜色：{@link #rgb()} 只是「基准色」（薄荷亮绿），用于物品名那一行与
+     * 其它无法逐帧上色的位置；真正的彩虹由消费方在客户端逐帧调用 {@link #rainbowBorderStart(long)} /
+     * {@link #rainbowBorderEnd(long)} 取得（见 {@link #isRainbow()}）。
+     */
+    BIZARRE("ASTRAL_DICE_BIZARRE", "astral_dice:bizarre", 0x6BFFA8);
 
     private final String constantName;
     private final String serializedName;
@@ -89,5 +97,91 @@ public enum Rarity {
     /** 交给原版枚举常量的 Style 变换函数（扩展时传入；原版 tooltip 链路会调用它）。 */
     public UnaryOperator<Style> styleModifier() {
         return this::apply;
+    }
+
+    /** 彩虹一整个色环走完的周期（毫秒）—— 边框流动速度的**唯一权威**。 */
+    public static final long RAINBOW_CYCLE_MILLIS = 3000L;
+
+    /** 边框两色在色环上的间隔（1/3 圈 = 120°）。 */
+    private static final float RAINBOW_SPREAD = 1.0F / 3.0F;
+
+    /** 彩虹的饱和度 / 明度：取高饱和高亮，保证在深色 tooltip 背景上仍然醒目。 */
+    private static final float RAINBOW_SATURATION = 0.85F;
+    private static final float RAINBOW_BRIGHTNESS = 1.0F;
+
+    /**
+     * 该等级是否以**彩虹（流动）**呈现 —— 当前仅 {@link #BIZARRE}。
+     *
+     * <p>⚠️ 这里的「彩虹」**不是**单一颜色，故 {@link #styleModifier()} 只能给出 {@link #rgb()} 那一个
+     * 基准色（用于物品名那一行、以及快捷栏切换提示等无法逐帧上色的位置）；真正流动的色环由
+     * 消费方在**客户端**逐帧渲染时调用 {@link #rainbowBorderStart(long)} / {@link #rainbowBorderEnd(long)}
+     * 取得（原版 tooltip 每帧重绘 ⇒ 事件每帧都发，无需 Mixin）。
+     */
+    public boolean isRainbow() {
+        return this == BIZARRE;
+    }
+
+    /** HSV → 0xRRGGBB（不含 alpha；h 可为任意实数，按小数部分取模）。 */
+    public static int hsvToRgb(float hue, float saturation, float value) {
+        float h = (hue - (float) Math.floor(hue)) * 6.0F;
+        float s = Math.max(0.0F, Math.min(1.0F, saturation));
+        float v = Math.max(0.0F, Math.min(1.0F, value));
+        int i = (int) h;
+        float f = h - i;
+        float p = v * (1.0F - s);
+        float q = v * (1.0F - s * f);
+        float t = v * (1.0F - s * (1.0F - f));
+        float r;
+        float g;
+        float b;
+        switch (i % 6) {
+            case 0:
+                r = v; g = t; b = p;
+                break;
+            case 1:
+                r = q; g = v; b = p;
+                break;
+            case 2:
+                r = p; g = v; b = t;
+                break;
+            case 3:
+                r = p; g = q; b = v;
+                break;
+            case 4:
+                r = t; g = p; b = v;
+                break;
+            default:
+                r = v; g = p; b = q;
+                break;
+        }
+        return (Math.round(r * 255.0F) << 16) | (Math.round(g * 255.0F) << 8) | Math.round(b * 255.0F);
+    }
+
+    /** 给定时刻在色环上的相位（0..1）—— 负数安全（取模后再归一）。 */
+    public static float rainbowHue(long millis) {
+        long m = millis % RAINBOW_CYCLE_MILLIS;
+        if (m < 0L) {
+            m += RAINBOW_CYCLE_MILLIS;
+        }
+        return (float) m / (float) RAINBOW_CYCLE_MILLIS;
+    }
+
+    /**
+     * 彩虹边框的**起始色**（ARGB，全不透明）—— 原版 tooltip 里对应「上横线」与「左右竖线渐变的顶端」。
+     */
+    public int rainbowBorderStart(long millis) {
+        return 0xFF000000 | hsvToRgb(rainbowHue(millis), RAINBOW_SATURATION, RAINBOW_BRIGHTNESS);
+    }
+
+    /**
+     * 彩虹边框的**结束色**（ARGB）—— 与起始色在色环上相差 1/3 圈；原版 tooltip 的左右竖线就是
+     * 「起始色 → 结束色」的竖直渐变，故这两个值一动，整圈边框的颜色就跟着流动。
+     */
+    public int rainbowBorderEnd(long millis) {
+        float h = rainbowHue(millis) + RAINBOW_SPREAD;
+        if (h >= 1.0F) {
+            h -= 1.0F;
+        }
+        return 0xFF000000 | hsvToRgb(h, RAINBOW_SATURATION, RAINBOW_BRIGHTNESS);
     }
 }

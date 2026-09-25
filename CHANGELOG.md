@@ -32,16 +32,23 @@
 ### New features
 
 - **Rarity tier API**: new `item/Rarity` (the single source of truth for tiers / constant names / serialized names /
-  **colour codes**) plus a per-platform `item/AstralRarities` that extends the four tiers onto the vanilla
+  **colour codes**) plus a per-platform `item/AstralRarities` that extends the five tiers onto the vanilla
   `net.minecraft.world.item.Rarity` and hands the values back at runtime.
   - ⚠️ **Hard format rule for the serialized name**: the *name parameter* handed to the vanilla enum constant must be
     `<modId>:<name>` (**colon separated**), i.e. `astral_dice:rare` / `astral_dice:epic` / `astral_dice:legendary` /
-    `astral_dice:pinnacle` (NeoForge's `RuntimeEnumExtender#validateNameParameter` enforces it; otherwise `Rarity`'s class
+    `astral_dice:pinnacle` / `astral_dice:bizarre` (NeoForge's `RuntimeEnumExtender#validateNameParameter` enforces it; otherwise `Rarity`'s class
     initialiser throws and the game will not start). This is a **different rule** from the `name` field in
     `enumextensions.json` (the **field name** injected into the enum, which must start with the lowercased modId, e.g.
     `ASTRAL_DICE_RARE`) - do not conflate them.
-  - Tiers and colours: `RARE` = light blue `0x8FD3FF`, `EPIC` = pink-purple `0xE3A6FF`,
-    `LEGENDARY` = gold `0xFFC24B`, `PINNACLE` = bright red `0xFF4D4D`;
+  - Five tiers and colours: `RARE` = light blue `0x8FD3FF`, `EPIC` = pink-purple `0xE3A6FF`,
+    `LEGENDARY` = gold `0xFFC24B`, `PINNACLE` = bright red `0xFF4D4D`, and
+    **`BIZARRE` = rainbow (flowing)**: ⚠️ this tier has **no single colour**; `rgb()` is only its base colour
+    (mint `0x6BFFA8`, used for the item-name line and anywhere that cannot be coloured per frame). The moving
+    wheel comes from the new API - `isRainbow()`, `rainbowBorderStart(millis)` / `rainbowBorderEnd(millis)`
+    (frame start/end colours as ARGB, one third of the wheel apart), `rainbowHue(millis)` for the phase and
+    `hsvToRgb(...)` for your own maths, with `RAINBOW_CYCLE_MILLIS = 3000`. **Consumers write no rendering code**:
+    feed these into their platform's tooltip frame hook (this repo's consumer uses `RenderTooltipEvent.Color`
+    on 1.21.1 / 1.20.1);
   - **Colour authority** = `Rarity#apply(Style)` / `Rarity#styleModifier()`: the colour is handed to the vanilla enum
     constant **at extension time** as a style modifier, after which vanilla's own tooltip path
     (`ItemStack#getTooltipLines` -> `Rarity#getStyleModifier()`) applies it - so changing a colour is a one-line edit
@@ -49,10 +56,10 @@
   - **Platform split**: the NeoForge lines (1.21.1 / 26.1.2) use `EnumProxy` fields referenced by name from the
     consumer's `META-INF/enumextensions.json`; Forge 1.20.1 uses `IExtensibleEnum` (the library registers via
     `Rarity.create(name, styleModifier)` in its static initialiser);
-  - Consumers must fetch values through `AstralRarities.{rare,epic,legendary,pinnacle}()` (**lazy**);
+  - Consumers must fetch values through `AstralRarities.{rare,epic,legendary,pinnacle,bizarre}()` (**lazy**);
     there is deliberately no `Rarity.valueOf(...)` path (Forge's enum-constant directory may be cached before
     registration, which would throw).
-- ⚠️ **Call contract**: the four `EnumProxy` field names, the `name` entries in `enumextensions.json`, and the modId of
+- ⚠️ **Call contract**: the five `EnumProxy` field names, the `name` entries in `enumextensions.json`, and the modId of
   the mod declaring that json are mutually constrained (FML requires the lowercased constant name to start with the
   declaring mod's modId) - renaming means changing all three together.
 

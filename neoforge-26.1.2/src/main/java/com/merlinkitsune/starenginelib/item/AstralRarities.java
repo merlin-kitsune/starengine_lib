@@ -3,7 +3,7 @@ package com.merlinkitsune.starenginelib.item;
 import net.neoforged.fml.common.asm.enumextension.EnumProxy;
 
 /**
- * 本模组稀有度等级的**平台接线** —— 把 {@link Rarity} 里的 4 个等级扩展进原版
+ * 本模组稀有度等级的**平台接线** —— 把 {@link Rarity} 里的 5 个等级扩展进原版
  * {@code net.minecraft.world.item.Rarity}，并提供运行期取回扩展常量的访问器。
  *
  * <h2>等级名 / 颜色 / 序列化名都在 {@link Rarity}</h2>
@@ -15,7 +15,7 @@ import net.neoforged.fml.common.asm.enumextension.EnumProxy;
 
 public final class AstralRarities {
     /*
-     * ⚠️ 这 4 个字段名是**契约的一部分**：消费方 mod 的 META-INF/enumextensions.json 里
+     * ⚠️ 这 5 个字段名是**契约的一部分**：消费方 mod 的 META-INF/enumextensions.json 里
      *    {"class": "com/merlinkitsune/starenginelib/item/AstralRarities", "field": "RARE"} 按名引用它们，
      *    改名（或改类名/包名）必须同步改该 json，否则该条 entry 会变成「引用不存在的字段」= 启动期报错。
      *    参数顺序 = 原版 (int id, String name, UnaryOperator<Style>) 构造器的**声明参数**：
@@ -41,6 +41,10 @@ public final class AstralRarities {
             net.minecraft.world.item.Rarity.class, null,
             Rarity.PINNACLE.serializedName(), Rarity.PINNACLE.styleModifier());
 
+    public static final EnumProxy<net.minecraft.world.item.Rarity> BIZARRE = new EnumProxy<>(
+            net.minecraft.world.item.Rarity.class, null,
+            Rarity.BIZARRE.serializedName(), Rarity.BIZARRE.styleModifier());
+
     private AstralRarities() {
     }
 
@@ -62,5 +66,10 @@ public final class AstralRarities {
     /** 巅峰（亮红）。 */
     public static net.minecraft.world.item.Rarity pinnacle() {
         return PINNACLE.getValue();
+    }
+
+    /** 奇特（彩虹/流动）。 */
+    public static net.minecraft.world.item.Rarity bizarre() {
+        return BIZARRE.getValue();
     }
 }
