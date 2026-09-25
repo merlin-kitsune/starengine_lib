@@ -24,8 +24,16 @@ import net.minecraft.network.chat.TextColor;
  * tooltip 链路（{@code ItemStack#getTooltipLines} → {@code Rarity#getStyleModifier()}）自动套用 ——
  * 因此本类即是**染色权威**：改色只需改这里的常量，无需任何 tooltip 侧代码。
  *
- * <p>**提示框边框**与物品名同色（{@link #frameColor(long)}）：原版 tooltip 的边框色与稀有度无关，
- * 故该值需要消费方写进平台的边框事件；彩虹档是唯一例外（逐帧取色 = 流动）。
+ * <p>**提示框边框**的策略（2026-09-25 用户裁决：**原版「边框与稀有度无关」的观感对稀有/史诗成立，
+ * 早期「文字与边框必须同色」的约定作废**）：
+ * <ul>
+ *   <li><b>稀有 / 史诗</b>：完全随原版 —— 消费方**不干预**边框（原版边框与稀有度无关的紫蓝渐变），
+ *       物品名仍由本档 Style 上色 ⇒ 与原版稀有/史诗物品观感一致；</li>
+ *   <li><b>传奇 / 巅峰</b>：消费方把 {@link #frameColor(long)}（= {@link #rgb()}）画成单色边框；</li>
+ *   <li><b>奇特</b>：消费方**自绘顺时针流动彩虹**（原版 {@code RenderTooltipEvent.Color} 只有
+ *       「顶/底」两色、只能竖直渐变，画不出沿边框环绕）—— 逐像素按
+ *       {@code hsvToRgb(rainbowHue(millis) − dist/周长, rainbowSaturation(), rainbowBrightness())} 取色。</li>
+ * </ul>
  *
  * <p>⚠️ 原版自带的 {@code COMMON/UNCOMMON/RARE/EPIC} 在本模组内**不再用于分档**（仅 {@code COMMON} 保留作"普通"）。
  *
@@ -103,14 +111,13 @@ public enum Rarity {
     }
 
     /**
-     * 该档位的**提示框边框色**（ARGB，全不透明）—— 除彩虹档外，它**就是** {@link #rgb()} 那一个颜色
-     * （⇒ 物品名文字与提示框边框**严格同色**；唯一例外是奇特）。
+     * 该档位的**提示框边框色**（ARGB，全不透明）—— 2026-09-25 起**只有传奇 / 巅峰**用它
+     * （消费方画成单色边框，值 = {@link #rgb()} ⇒ 与物品名同色）；稀有 / 史诗随原版不干预边框，
+     * 奇特走消费方**自绘顺时针彩虹**（不经过本方法）。
      *
-     * <p>彩虹档（{@link #isRainbow()}）返回**该时刻**的彩虹起始色 ⇒ 客户端**逐帧**调用即得流动边框
-     * （原版 tooltip 每帧重绘，见 {@link #rainbowBorderStart(long)}）。
-     *
-     * <p>⚠️ 原版 tooltip 的边框颜色**与稀有度无关**（`TooltipRenderUtil` 里写死），所以这个值必须由消费方
-     * 在平台的边框钩子里自己写入（本仓消费方见 AGENTS 稀有度段）；装了第三方 tooltip 模组时还要对那家做数据对接。
+     * <p>⚠️ 原版 tooltip 的边框颜色**与稀有度无关**（1.21.1/1.20.1 = `TooltipRenderUtil` 里写死的紫蓝渐变，
+     * 26.1.2 = `tooltip/frame` 九宫格贴图），所以任何自定义边框都必须由消费方自绘覆盖
+     * （本仓消费方见 AGENTS 稀有度段）；装了第三方 tooltip 模组时还要对那家做数据对接。
      *
      * @param millis 当前时刻（毫秒）—— 只有彩虹档用它，其余档位忽略
      */
@@ -127,6 +134,16 @@ public enum Rarity {
     /** 彩虹的饱和度 / 明度：取高饱和高亮，保证在深色 tooltip 背景上仍然醒目。 */
     private static final float RAINBOW_SATURATION = 0.85F;
     private static final float RAINBOW_BRIGHTNESS = 1.0F;
+
+    /** 彩虹的**饱和度**（0..1）—— 供消费方自绘彩虹边框时与 {@link #hsvToRgb(float, float, float)} 配套使用。 */
+    public static float rainbowSaturation() {
+        return RAINBOW_SATURATION;
+    }
+
+    /** 彩虹的**明度**（0..1）—— 供消费方自绘彩虹边框时与 {@link #hsvToRgb(float, float, float)} 配套使用。 */
+    public static float rainbowBrightness() {
+        return RAINBOW_BRIGHTNESS;
+    }
 
     /**
      * 该等级是否以**彩虹（流动）**呈现 —— 当前仅 {@link #BIZARRE}。

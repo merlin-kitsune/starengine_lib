@@ -39,11 +39,14 @@
     （用于物品名那一行等无法逐帧上色的位置）；真正流动的色环由新增 API 提供 ——
     `isRainbow()` 判定是否彩虹档、`rainbowBorderStart(millis)` / `rainbowBorderEnd(millis)` 按时刻取
     **边框起/止色**（ARGB，两者在色环上相差 1/3 圈）、`rainbowHue(millis)` 取相位、`hsvToRgb(...)` 供自算，
-    周期常量 `RAINBOW_CYCLE_MILLIS = 3000`。**消费方零渲染代码**：把这些值塞进所在平台的 tooltip 边框接口即可
-    （本仓消费方 1.21.1 / 1.20.1 用 `RenderTooltipEvent.Color`，见「奇特」条目）；
-  - **提示框边框色** = `Rarity#frameColor(long)`：除彩虹档外**就是文字色本身**（`0xFF000000 | rgb()`）
-    ⇒ 消费方把它写进平台边框钩子即得「文字与边框严格同色」；彩虹档返回该时刻的彩虹起始色（逐帧调用 = 流动）。
-    配套 **反查** `AstralRarities#tierOf(原版 Rarity)`：非本库档位（原版自带四档）返回 `null`，
+    周期常量 `RAINBOW_CYCLE_MILLIS = 3000`，另配 `rainbowSaturation()` / `rainbowBrightness()` 两个访问器，
+    消费方自绘时与库保持同一组参数；
+  - **提示框边框策略（2026-09-25 用户裁决修订）**：早期「文字与边框严格同色」的约定**作废** ——
+    稀有 / 史诗**完全随原版**（消费方不干预边框，原版紫蓝渐变保留，只染物品名那行）；
+    传奇 / 巅峰维持自定义：`Rarity#frameColor(long)` = `0xFF000000 | rgb()` 画成单色边框；
+    奇特**走不了**平台两色钩子（原版边框是竖直渐变，顺时针彩虹必须由消费方逐像素自绘，
+    见消费方的 `TooltipBorderMixin`）。配套 **反查** `AstralRarities#tierOf(原版 Rarity)`：非本库档位
+    （原版自带四档）返回 `null`，
     供客户端判断「这件物品是不是我们的档位」，避免把档位映射抄到库外。
   - **染色权威** = `Rarity#apply(Style)` / `Rarity#styleModifier()`：颜色在**扩展时**作为 Style 变换函数交给原版
     枚举常量，此后由原版 tooltip 链路（`ItemStack#getTooltipLines` → `Rarity#getStyleModifier()`）自动套用 ⇒

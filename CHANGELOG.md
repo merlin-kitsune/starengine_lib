@@ -47,13 +47,15 @@
     (mint `0x6BFFA8`, used for the item-name line and anywhere that cannot be coloured per frame). The moving
     wheel comes from the new API - `isRainbow()`, `rainbowBorderStart(millis)` / `rainbowBorderEnd(millis)`
     (frame start/end colours as ARGB, one third of the wheel apart), `rainbowHue(millis)` for the phase and
-    `hsvToRgb(...)` for your own maths, with `RAINBOW_CYCLE_MILLIS = 3000`. **Consumers write no rendering code**:
-    feed these into their platform's tooltip frame hook (this repo's consumer uses `RenderTooltipEvent.Color`
-    on 1.21.1 / 1.20.1);
-  - **Tooltip frame colour** = `Rarity#frameColor(long)`: for every tier but the rainbow one it is
-    **the text colour itself** (`0xFF000000 | rgb()`) - feed it into the platform's tooltip-frame hook and
-    "text and border strictly share one colour". The rainbow tier returns that instant's rainbow start colour
-    (call it per frame to animate). Paired with the reverse lookup `AstralRarities#tierOf(vanilla Rarity)`,
+    `hsvToRgb(...)` for your own maths, with `RAINBOW_CYCLE_MILLIS = 3000` plus the pair
+    `rainbowSaturation()` / `rainbowBrightness()` so consumer-side rendering stays in sync with the library;
+  - **Tooltip frame policy (revised 2026-09-25, user ruling)**: the earlier "text and border strictly share
+    one colour" rule is **withdrawn** - the vanilla look wins for RARE / EPIC (the consumer leaves the frame
+    alone, vanilla's purple gradient stays, only the name line is tinted). LEGENDARY / PINNACLE stay custom:
+    `Rarity#frameColor(long)` = `0xFF000000 | rgb()` painted as a solid frame. BIZARRE cannot go through the
+    two-colour platform hook at all (the vanilla frame is a vertical gradient; a clockwise rainbow must be
+    drawn per pixel by the consumer - see the consumer's `TooltipBorderMixin`). Paired with the reverse lookup
+    `AstralRarities#tierOf(vanilla Rarity)`,
     which returns `null` for tiers that are not ours (the four vanilla ones) so consumers never have to copy
     the tier mapping outside the library.
   - **Colour authority** = `Rarity#apply(Style)` / `Rarity#styleModifier()`: the colour is handed to the vanilla enum
