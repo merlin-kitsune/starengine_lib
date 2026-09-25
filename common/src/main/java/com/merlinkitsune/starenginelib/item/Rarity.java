@@ -48,13 +48,13 @@ public enum Rarity {
     /** 巅峰 —— 亮红。 */
     PINNACLE("ASTRAL_DICE_PINNACLE", "astral_dice:pinnacle", 0xFF4D4D),
     /**
-     * 奇特 —— **彩虹（流动）**。
+     * 奇特 —— **彩虹（流动）边框 + 亮红文字**。
      *
-     * <p>⚠️ 本档**没有**单一颜色：{@link #rgb()} 只是「基准色」（薄荷亮绿），用于物品名那一行与
-     * 其它无法逐帧上色的位置；真正的彩虹由消费方在客户端逐帧调用 {@link #rainbowBorderStart(long)} /
-     * {@link #rainbowBorderEnd(long)} 取得（见 {@link #isRainbow()}）。
+     * <p>⚠️ 本档的文字色（{@link #rgb()}）= **亮红**，与巅峰 {@link #PINNACLE} 同色（2026-09-25 用户裁决：
+     * 奇特文字改亮红、边框不动）；流动彩虹只在**提示框边框**上由消费方逐帧调用
+     * {@link #rainbowBorderStart(long)} / {@link #rainbowBorderEnd(long)} 取得（见 {@link #isRainbow()}）。
      */
-    BIZARRE("ASTRAL_DICE_BIZARRE", "astral_dice:bizarre", 0x6BFFA8);
+    BIZARRE("ASTRAL_DICE_BIZARRE", "astral_dice:bizarre", 0xFF4D4D);
 
     private final String constantName;
     private final String serializedName;
