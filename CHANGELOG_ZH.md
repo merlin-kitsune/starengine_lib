@@ -19,6 +19,32 @@
   与 `.github/workflows/build.yml` 的构建步骤注释。CHANGELOG 自身历史条目（`1.0.0` 等）中关于
   `pushToPack` 的描述**保留**，作为该机制存在时期的记录。
 
+## 1.0.4
+
+> 纯新增（无破坏性变更）⇒ 按补丁位发布；消费方 `starengine_lib_version_range` 下界随之收紧至 `[1.0.4,2.0)`。
+
+### 新功能
+
+- **稀有度等级 API**：新增 `item/Rarity`（等级 / 常量名 / 序列化名 / **颜色码的唯一权威**）与三平台各一份的
+  `item/AstralRarities`（把 4 个等级扩展进原版 `net.minecraft.world.item.Rarity` 的接线 + 运行期访问器）。
+  - ⚠️ **序列化名的硬性格式**：扩展时交给原版枚举常量的 **name 参数**必须形如 `<modId>:<名字>`（**冒号**分隔），
+    即 `astral_dice:rare` / `astral_dice:epic` / `astral_dice:legendary` / `astral_dice:pinnacle`
+    （NeoForge 的 `RuntimeEnumExtender#validateNameParameter` 强制校验，不符则在 `Rarity` 类加载时抛异常、游戏起不来）；
+    它与 `enumextensions.json` 里 `name` 字段（注入进枚举的**字段名**，要求以 modId 小写前缀开头、形如 `ASTRAL_DICE_RARE`）
+    是**两条不同的规则**，勿混。
+  - 4 个等级与颜色：`RARE` 稀有 = 浅蓝 `0x8FD3FF`、`EPIC` 史诗 = 粉紫 `0xE3A6FF`、
+    `LEGENDARY` 传奇 = 金 `0xFFC24B`、`PINNACLE` 巅峰 = 亮红 `0xFF4D4D`；
+  - **染色权威** = `Rarity#apply(Style)` / `Rarity#styleModifier()`：颜色在**扩展时**作为 Style 变换函数交给原版
+    枚举常量，此后由原版 tooltip 链路（`ItemStack#getTooltipLines` → `Rarity#getStyleModifier()`）自动套用 ⇒
+    改色只需改 `Rarity` 里的常量，消费方没有任何 tooltip 侧代码；
+  - **平台差异**：NeoForge 两线（1.21.1 / 26.1.2）用 `EnumProxy` 字段，由消费方的
+    `META-INF/enumextensions.json` 按字段名引用；Forge 1.20.1 走 `IExtensibleEnum`（本库静态初始化里
+    `Rarity.create(name, styleModifier)`）；
+  - 消费方取常量一律走 `AstralRarities.{rare,epic,legendary,pinnacle}()`（**懒解析**）；
+    ⚠️ 不提供 `Rarity.valueOf(...)` 路径（Forge 侧枚举常量目录可能被提前缓存 ⇒ 会抛异常）。
+- ⚠️ **调用契约**：`AstralRarities` 的 4 个 `EnumProxy` 字段名、`enumextensions.json` 的 `name` 字段、以及
+  声明该 json 的 mod 的 modId 三者互相约束（FML 要求常量名小写后以声明方 modId 开头）—— 改名须三处同改。
+
 ## 1.0.3
 
 > 版本号说明:本版**合并了原拟的 `1.0.2`** —— 该号已提交但**从未推送、从未发布**(其内容即下方

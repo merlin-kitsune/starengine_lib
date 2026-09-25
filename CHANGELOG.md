@@ -24,6 +24,38 @@
   `pushToPack` mentions in older CHANGELOG sections (e.g. `1.0.0`) are **kept** as a record of the period when that
   mechanism existed.
 
+## 1.0.4
+
+> Purely additive (no breaking change), so it ships in the patch slot; the consumer's
+> `starengine_lib_version_range` lower bound moves to `[1.0.4,2.0)`.
+
+### New features
+
+- **Rarity tier API**: new `item/Rarity` (the single source of truth for tiers / constant names / serialized names /
+  **colour codes**) plus a per-platform `item/AstralRarities` that extends the four tiers onto the vanilla
+  `net.minecraft.world.item.Rarity` and hands the values back at runtime.
+  - ⚠️ **Hard format rule for the serialized name**: the *name parameter* handed to the vanilla enum constant must be
+    `<modId>:<name>` (**colon separated**), i.e. `astral_dice:rare` / `astral_dice:epic` / `astral_dice:legendary` /
+    `astral_dice:pinnacle` (NeoForge's `RuntimeEnumExtender#validateNameParameter` enforces it; otherwise `Rarity`'s class
+    initialiser throws and the game will not start). This is a **different rule** from the `name` field in
+    `enumextensions.json` (the **field name** injected into the enum, which must start with the lowercased modId, e.g.
+    `ASTRAL_DICE_RARE`) - do not conflate them.
+  - Tiers and colours: `RARE` = light blue `0x8FD3FF`, `EPIC` = pink-purple `0xE3A6FF`,
+    `LEGENDARY` = gold `0xFFC24B`, `PINNACLE` = bright red `0xFF4D4D`;
+  - **Colour authority** = `Rarity#apply(Style)` / `Rarity#styleModifier()`: the colour is handed to the vanilla enum
+    constant **at extension time** as a style modifier, after which vanilla's own tooltip path
+    (`ItemStack#getTooltipLines` -> `Rarity#getStyleModifier()`) applies it - so changing a colour is a one-line edit
+    in `Rarity` with no tooltip code on the consumer side;
+  - **Platform split**: the NeoForge lines (1.21.1 / 26.1.2) use `EnumProxy` fields referenced by name from the
+    consumer's `META-INF/enumextensions.json`; Forge 1.20.1 uses `IExtensibleEnum` (the library registers via
+    `Rarity.create(name, styleModifier)` in its static initialiser);
+  - Consumers must fetch values through `AstralRarities.{rare,epic,legendary,pinnacle}()` (**lazy**);
+    there is deliberately no `Rarity.valueOf(...)` path (Forge's enum-constant directory may be cached before
+    registration, which would throw).
+- ⚠️ **Call contract**: the four `EnumProxy` field names, the `name` entries in `enumextensions.json`, and the modId of
+  the mod declaring that json are mutually constrained (FML requires the lowercased constant name to start with the
+  declaring mod's modId) - renaming means changing all three together.
+
 ## 1.0.3
 
 > Version note: this release **absorbs the planned `1.0.2`** — that number was committed but **never
