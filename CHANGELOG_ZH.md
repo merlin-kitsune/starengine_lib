@@ -32,7 +32,8 @@
     （NeoForge 的 `RuntimeEnumExtender#validateNameParameter` 强制校验，不符则在 `Rarity` 类加载时抛异常、游戏起不来）；
     它与 `enumextensions.json` 里 `name` 字段（注入进枚举的**字段名**，要求以 modId 小写前缀开头、形如 `ASTRAL_DICE_RARE`）
     是**两条不同的规则**，勿混。
-  - 5 个等级与颜色：`RARE` 稀有 = 浅蓝 `0x8FD3FF`、`EPIC` 史诗 = 粉紫 `0xE3A6FF`、
+  - 5 个等级与颜色：`RARE` 稀有 = **原版 RARE 的配色**（水蓝 `0x55FFFF`，即 `ChatFormatting.AQUA`）、
+    `EPIC` 史诗 = **原版 EPIC 的配色**（粉紫 `0xFF55FF`，即 `ChatFormatting.LIGHT_PURPLE`）、
     `LEGENDARY` 传奇 = 金 `0xFFC24B`、`PINNACLE` 巅峰 = 亮红 `0xFF4D4D`、
     **`BIZARRE` 奇特 = 彩虹（流动）**：⚠️ 本档**没有单一颜色**，`rgb()` 只是基准色薄荷绿 `0x6BFFA8`
     （用于物品名那一行等无法逐帧上色的位置）；真正流动的色环由新增 API 提供 ——
@@ -40,6 +41,10 @@
     **边框起/止色**（ARGB，两者在色环上相差 1/3 圈）、`rainbowHue(millis)` 取相位、`hsvToRgb(...)` 供自算，
     周期常量 `RAINBOW_CYCLE_MILLIS = 3000`。**消费方零渲染代码**：把这些值塞进所在平台的 tooltip 边框接口即可
     （本仓消费方 1.21.1 / 1.20.1 用 `RenderTooltipEvent.Color`，见「奇特」条目）；
+  - **提示框边框色** = `Rarity#frameColor(long)`：除彩虹档外**就是文字色本身**（`0xFF000000 | rgb()`）
+    ⇒ 消费方把它写进平台边框钩子即得「文字与边框严格同色」；彩虹档返回该时刻的彩虹起始色（逐帧调用 = 流动）。
+    配套 **反查** `AstralRarities#tierOf(原版 Rarity)`：非本库档位（原版自带四档）返回 `null`，
+    供客户端判断「这件物品是不是我们的档位」，避免把档位映射抄到库外。
   - **染色权威** = `Rarity#apply(Style)` / `Rarity#styleModifier()`：颜色在**扩展时**作为 Style 变换函数交给原版
     枚举常量，此后由原版 tooltip 链路（`ItemStack#getTooltipLines` → `Rarity#getStyleModifier()`）自动套用 ⇒
     改色只需改 `Rarity` 里的常量，消费方没有任何 tooltip 侧代码；

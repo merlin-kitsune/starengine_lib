@@ -24,15 +24,18 @@ import net.minecraft.network.chat.TextColor;
  * tooltip 链路（{@code ItemStack#getTooltipLines} → {@code Rarity#getStyleModifier()}）自动套用 ——
  * 因此本类即是**染色权威**：改色只需改这里的常量，无需任何 tooltip 侧代码。
  *
+ * <p>**提示框边框**与物品名同色（{@link #frameColor(long)}）：原版 tooltip 的边框色与稀有度无关，
+ * 故该值需要消费方写进平台的边框事件；彩虹档是唯一例外（逐帧取色 = 流动）。
+ *
  * <p>⚠️ 原版自带的 {@code COMMON/UNCOMMON/RARE/EPIC} 在本模组内**不再用于分档**（仅 {@code COMMON} 保留作"普通"）。
  *
  * @see com.merlinkitsune.starenginelib.item.AstralRarities
  */
 public enum Rarity {
-    /** 稀有 —— 浅蓝。 */
-    RARE("ASTRAL_DICE_RARE", "astral_dice:rare", 0x8FD3FF),
-    /** 史诗 —— 粉紫。 */
-    EPIC("ASTRAL_DICE_EPIC", "astral_dice:epic", 0xE3A6FF),
+    /** 稀有 —— **原版 RARE 的配色**（水蓝，{@code ChatFormatting.AQUA} = {@code #55FFFF}）。 */
+    RARE("ASTRAL_DICE_RARE", "astral_dice:rare", 0x55FFFF),
+    /** 史诗 —— **原版 EPIC 的配色**（粉紫，{@code ChatFormatting.LIGHT_PURPLE} = {@code #FF55FF}）。 */
+    EPIC("ASTRAL_DICE_EPIC", "astral_dice:epic", 0xFF55FF),
     /** 传奇 —— 金。 */
     LEGENDARY("ASTRAL_DICE_LEGENDARY", "astral_dice:legendary", 0xFFC24B),
     /** 巅峰 —— 亮红。 */
@@ -97,6 +100,22 @@ public enum Rarity {
     /** 交给原版枚举常量的 Style 变换函数（扩展时传入；原版 tooltip 链路会调用它）。 */
     public UnaryOperator<Style> styleModifier() {
         return this::apply;
+    }
+
+    /**
+     * 该档位的**提示框边框色**（ARGB，全不透明）—— 除彩虹档外，它**就是** {@link #rgb()} 那一个颜色
+     * （⇒ 物品名文字与提示框边框**严格同色**；唯一例外是奇特）。
+     *
+     * <p>彩虹档（{@link #isRainbow()}）返回**该时刻**的彩虹起始色 ⇒ 客户端**逐帧**调用即得流动边框
+     * （原版 tooltip 每帧重绘，见 {@link #rainbowBorderStart(long)}）。
+     *
+     * <p>⚠️ 原版 tooltip 的边框颜色**与稀有度无关**（`TooltipRenderUtil` 里写死），所以这个值必须由消费方
+     * 在平台的边框钩子里自己写入（本仓消费方见 AGENTS 稀有度段）；装了第三方 tooltip 模组时还要对那家做数据对接。
+     *
+     * @param millis 当前时刻（毫秒）—— 只有彩虹档用它，其余档位忽略
+     */
+    public int frameColor(long millis) {
+        return this.isRainbow() ? this.rainbowBorderStart(millis) : (0xFF000000 | this.rgb);
     }
 
     /** 彩虹一整个色环走完的周期（毫秒）—— 边框流动速度的**唯一权威**。 */

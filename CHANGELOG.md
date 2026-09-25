@@ -40,7 +40,8 @@
     initialiser throws and the game will not start). This is a **different rule** from the `name` field in
     `enumextensions.json` (the **field name** injected into the enum, which must start with the lowercased modId, e.g.
     `ASTRAL_DICE_RARE`) - do not conflate them.
-  - Five tiers and colours: `RARE` = light blue `0x8FD3FF`, `EPIC` = pink-purple `0xE3A6FF`,
+  - Five tiers and colours: `RARE` = **the vanilla RARE colour** (aqua `0x55FFFF`, i.e. `ChatFormatting.AQUA`),
+    `EPIC` = **the vanilla EPIC colour** (light purple `0xFF55FF`, i.e. `ChatFormatting.LIGHT_PURPLE`),
     `LEGENDARY` = gold `0xFFC24B`, `PINNACLE` = bright red `0xFF4D4D`, and
     **`BIZARRE` = rainbow (flowing)**: ⚠️ this tier has **no single colour**; `rgb()` is only its base colour
     (mint `0x6BFFA8`, used for the item-name line and anywhere that cannot be coloured per frame). The moving
@@ -49,6 +50,12 @@
     `hsvToRgb(...)` for your own maths, with `RAINBOW_CYCLE_MILLIS = 3000`. **Consumers write no rendering code**:
     feed these into their platform's tooltip frame hook (this repo's consumer uses `RenderTooltipEvent.Color`
     on 1.21.1 / 1.20.1);
+  - **Tooltip frame colour** = `Rarity#frameColor(long)`: for every tier but the rainbow one it is
+    **the text colour itself** (`0xFF000000 | rgb()`) - feed it into the platform's tooltip-frame hook and
+    "text and border strictly share one colour". The rainbow tier returns that instant's rainbow start colour
+    (call it per frame to animate). Paired with the reverse lookup `AstralRarities#tierOf(vanilla Rarity)`,
+    which returns `null` for tiers that are not ours (the four vanilla ones) so consumers never have to copy
+    the tier mapping outside the library.
   - **Colour authority** = `Rarity#apply(Style)` / `Rarity#styleModifier()`: the colour is handed to the vanilla enum
     constant **at extension time** as a style modifier, after which vanilla's own tooltip path
     (`ItemStack#getTooltipLines` -> `Rarity#getStyleModifier()`) applies it - so changing a colour is a one-line edit

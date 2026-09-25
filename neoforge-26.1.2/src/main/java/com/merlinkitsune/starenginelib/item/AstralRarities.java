@@ -48,12 +48,12 @@ public final class AstralRarities {
     private AstralRarities() {
     }
 
-    /** 稀有（浅蓝）—— 扩展后的原版 {@code Rarity} 常量。 */
+    /** 稀有（水蓝 = 原版 RARE 配色）—— 扩展后的原版 {@code Rarity} 常量。 */
     public static net.minecraft.world.item.Rarity rare() {
         return RARE.getValue();
     }
 
-    /** 史诗（粉紫）。 */
+    /** 史诗（粉紫 = 原版 EPIC 配色）。 */
     public static net.minecraft.world.item.Rarity epic() {
         return EPIC.getValue();
     }
@@ -71,5 +71,34 @@ public final class AstralRarities {
     /** 奇特（彩虹/流动）。 */
     public static net.minecraft.world.item.Rarity bizarre() {
         return BIZARRE.getValue();
+    }
+
+    /**
+     * **反查**：把一个（可能已被本库扩展过的）原版 {@code Rarity} 常量还原成本库档位；
+     * **不是本模组的档位时返回 {@code null}**（含原版自带的 COMMON / UNCOMMON / RARE / EPIC）。
+     *
+     * <p>用途：客户端渲染「按本模组档位生效」的表现（提示框边框染色）时，用它判断该物品归哪一档。
+     * 消费方**不要**自己写 {@code ==} 链 —— 那等于把档位映射抄到了库外。
+     */
+    public static Rarity tierOf(net.minecraft.world.item.Rarity rarity) {
+        if (rarity == null) {
+            return null;
+        }
+        if (rarity == rare()) {
+            return Rarity.RARE;
+        }
+        if (rarity == epic()) {
+            return Rarity.EPIC;
+        }
+        if (rarity == legendary()) {
+            return Rarity.LEGENDARY;
+        }
+        if (rarity == pinnacle()) {
+            return Rarity.PINNACLE;
+        }
+        if (rarity == bizarre()) {
+            return Rarity.BIZARRE;
+        }
+        return null;
     }
 }
