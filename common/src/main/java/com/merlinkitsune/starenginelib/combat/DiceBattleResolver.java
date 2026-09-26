@@ -17,20 +17,33 @@ package com.merlinkitsune.starenginelib.combat;
  *
  * <h2>伤害合成</h2>
  * <pre>
- *   finalDamage = max(1, 攻击方战斗点 − 防御方战斗点)
+ *   finalDamage = max(1, 攻击方战斗点 × 0.15, 攻击方战斗点 − 防御方战斗点)
  * </pre>
  * 其中「战斗点」= 基础攻防值 + 骰战骰点 + 战斗牌加成（由消费方各自算好后传入）。
- * <b>下限 1 点</b>：即使防御方战斗点 ≥ 攻击方战斗点，也至少造成 1 点伤害。
  *
- * <p>⚠️ 该下限是**骰战层**的下限，不是最终伤害。消费方的减伤类效果（固定点数减法）必须在本
+ * <h2>下限：绝对 1 点 + 相对 15%（2026-09-26 裁决，2.0.0-SNAPSHOT.2 新增）</h2>
+ * 早期语义只有**绝对下限 1 点**。数值仿真显示该语义在「高防目标 + 低攻来源」的档位上会把
+ * 结果**恒定压到 1.0**，于是任何修饰器（保护 / 抗性 / 护甲变化）在该档位上的读数都退化为 0 ——
+ * 即「机制其实生效了，但被下限吃掉，看起来像没生效」。
+ * <p>自本版起在下限里加入**相对项** {@code 攻击方战斗点 × 0.15}：攻击点越高、下限越高，
+ * 触底不再把差异抹平；对**未触底**的场景数学上零影响（{@code max} 取不到该项）。
+ *
+ * <p>⚠️ 该下限仍是**骰战层**的下限，不是最终伤害。消费方的减伤类效果（固定点数减法）必须在本
  * 方法**之后**应用，且**允许把伤害扣到 0**（顺序 = 骰战层 → 乘算因子 → 减算减免）。
  *
  * <p>本类**纯函数、无状态**：不注册注册表条目、不注册事件、不反向依赖任何消费方。
  */
 public final class DiceBattleResolver {
 
-    /** 骰战伤害下限（防御方战斗点 ≥ 攻击方战斗点时仍至少造成该点数）。 */
+    /** 骰战伤害的**绝对**下限（防御方战斗点 ≥ 攻击方战斗点时仍至少造成该点数）。 */
     public static final float MIN_DAMAGE = 1.0F;
+
+    /**
+     * 骰战伤害的**相对**下限比例（最终伤害 ≥ 攻击方战斗点 × 该值）。
+     *
+     * @see #resolve(float, float)
+     */
+    public static final float RELATIVE_FLOOR_RATIO = 0.15F;
 
     private DiceBattleResolver() {
     }
@@ -46,14 +59,24 @@ public final class DiceBattleResolver {
     }
 
     /**
-     * 骰战最终伤害合成（含下限 1 点）。
+     * 骰战最终伤害合成（含默认下限：绝对 1 点 ∪ 攻击点 × {@value #RELATIVE_FLOOR_RATIO}）。
      *
      * @param attackPower   攻击方战斗点（基础攻击力 + 骰点 + 战斗牌攻击加成）
      * @param defensePower  防御方战斗点（基础防御力 + 骰点 + 战斗牌防御加成）
-     * @return {@code max(1, attackPower − defensePower)}
+     * @return {@code max(1, attackPower × 0.15, attackPower − defensePower)}
      */
     public static float resolve(float attackPower, float defensePower) {
-        return Math.max(MIN_DAMAGE, attackPower - defensePower);
+        return resolve(attackPower, defensePower, RELATIVE_FLOOR_RATIO);
+    }
+
+    /**
+     * 指定相对下限比例的版本（供需要自定义口径的消费方使用）。
+     *
+     * @param relativeFloorRatio 相对下限比例；传 {@code 0} 即退化为纯「绝对 1 点下限」的旧语义
+     */
+    public static float resolve(float attackPower, float defensePower, float relativeFloorRatio) {
+        float floor = Math.max(MIN_DAMAGE, attackPower * relativeFloorRatio);
+        return Math.max(floor, attackPower - defensePower);
     }
 
     /** {@link #resolve(float, float)} 的 double 入参重载（返回 float，便于直接喂给伤害事件）。 */

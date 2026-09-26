@@ -3,6 +3,32 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
+## Unreleased (2.0.0-SNAPSHOT.2)
+
+### Combat
+
+- **The `combat` package (shared dice-combat formulas).** `2.0.0-SNAPSHOT.1` pushed the dice-combat formulas down from
+  the consumer into this library so that all three consumer lines share one implementation: `TargetCategory` (four-way
+  mob classification), `TargetBattleStats` (initial attack / defense table), `CombatFormula` (pure conversion
+  functions) and `DiceBattleResolver` (opposed rolls and damage synthesis). `2.0.0-SNAPSHOT.2` adds the rest of the
+  batch and re-calibrates the numbers:
+  - **New `VanillaMitigation`** - pure arithmetic for the two vanilla **magic-reduction** channels (the **Resistance**
+    effect and the **Protection** enchantment), to be multiplied onto the dice-combat result **after** resolution.
+    Both formulas are pure multiplication, so they compose order-independently. The class deliberately keeps the
+    platform differences out (how protection points are obtained, and the effect constant name, stay on the consumer
+    side) and stays stateless: it registers nothing and depends on no consumer.
+  - **Re-calibrated defense curve**: player base defense `2 -> 4`, player armor coefficient `0.5 -> 0.30`, player
+    toughness coefficient `1.4 -> 0.85`; mob armor coefficient `0.5 -> 0.40`, mob toughness coefficient
+    `1.125 -> 1.0`. `TargetBattleStats`: hostile base defense `2 -> 0`, hostile base attack `5 -> 4`, neutral base
+    attack `4 -> 3`. The intent is to raise the base and flatten the slope, so early-game difficulty and late-game
+    output stop being extreme.
+  - **Damage floor moved into the library**: `DiceBattleResolver.resolve(attack, defense, relativeFloorRatio)` plus
+    `RELATIVE_FLOOR_RATIO = 0.15F`. The floor is now `max(MIN_DAMAGE, attack power x relativeFloorRatio)` instead of a
+    flat 1 point. The two-argument `resolve` keeps working and delegates with the default ratio.
+  - **Breaking change inside the snapshot line**: the public constant **`CombatFormula.ARMOR_DIVISOR` was removed** -
+    the single shared `armor / 2` divisor is replaced by per-side coefficients (`PLAYER_ARMOR_COEF` /
+    `MOB_ARMOR_COEF`).
+
 ## Unreleased
 
 > The entries below are **build-script / documentation** changes with no effect on jar contents, so
