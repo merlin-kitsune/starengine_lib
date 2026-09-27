@@ -24,6 +24,28 @@
   `pushToPack` mentions in older CHANGELOG sections (e.g. `1.0.0`) are **kept** as a record of the period when that
   mechanism existed.
 
+## 1.0.5
+
+> Purely additive (no change to existing branches' semantics) => released as a patch;
+> consumers can swap it in place within 1.x without code changes.
+
+### New features
+
+- **"Angerable tamable animals" now count as hostile targets**: the criterion in `combat/HostileTargets`
+  is extended from "hostile mobs + neutral mobs (pets excluded)" to
+  "... + angerable tamable animals (pets excluded)".
+  - New private predicate `isAngerableTamedMount`: a `Mob` that is **tamable**
+    (`getOwner() == null` and not a tamed `TamableAnimal`) and **angerable**
+    (`Mob#getTarget() != null`, or `LivingEntity#getLastHurtByMob() != null`) now counts as a hostile target.
+  - Covers vanilla **llamas / trader llamas** -- they retaliate when hit and are tamable, yet they do not
+    implement `NeutralMob`, so they were covered neither by the neutral branch nor by `Enemy`
+    => they used to be unselectable in the target selector.
+  - Note: the predicate deliberately avoids class/package names: 26.1.2 renamed `animal/horse/**`
+    to `animal/equine/**`, so hard-coded class paths would break the shared `common` sources.
+  - Note: it also avoids `Mob#isAggressive()`: its meaning is mob-specific -- `Panda` overrides it to mean
+    the "aggressive gene" (a permanent personality, not current anger), while `Llama` does not override it
+    (always `false`).
+
 ## 1.0.4
 
 > Purely additive (no breaking change), so it ships in the patch slot; the consumer's

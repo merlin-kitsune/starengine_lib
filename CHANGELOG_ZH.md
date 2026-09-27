@@ -19,6 +19,23 @@
   与 `.github/workflows/build.yml` 的构建步骤注释。CHANGELOG 自身历史条目（`1.0.0` 等）中关于
   `pushToPack` 的描述**保留**，作为该机制存在时期的记录。
 
+## 1.0.5
+
+> 纯新增（不改既有分支语义）⇒ 按补丁位发布；消费方可在 1.x 内原位替换，无需改代码。
+
+### 新功能
+
+- **「会被激怒的可驯服动物」计入敌对目标**：`combat/HostileTargets` 的口径由
+  「敌对生物 ∪ 中立生物（宠物除外）」扩展为「… ∪ 会被激怒的可驯服动物（宠物除外）」。
+  - 新增私有判定 `isAngerableTamedMount`：**可驯服**（`getOwner() == null` 且非已驯服 `TamableAnimal`）、
+    且**会被激怒**（`Mob#getTarget()` 非空，或 `LivingEntity#getLastHurtByMob()` 非空）的 `Mob` ⇒ 计入敌对目标。
+  - 覆盖原版**羊驼 / 行商羊驼** —— 它们会被激怒（受击后吐口水还击）、也可驯服，
+    却没有实现 `NeutralMob`，故此前既不落入中立生物分支、也不被 `Enemy` 覆盖 ⇒ 在目标选择器里一直不可选。
+  - ⚠️ 判据刻意**不使用类名 / 包名**：26.1.2 已把 `animal/horse/**` 整体改名到 `animal/equine/**`，
+    硬编码类路径会让三平台共用的 `common` 源码编译不过。
+  - ⚠️ 判据也**不使用 `Mob#isAggressive()`**：其语义按生物而异 —— `Panda` 覆写它表示
+    「攻击型基因」（永久性格，并非当前正在发怒），而 `Llama` 不覆写（默认恒 `false`）。
+
 ## 1.0.4
 
 > 纯新增（无破坏性变更）⇒ 按补丁位发布；消费方 `starengine_lib_version_range` 下界随之收紧至 `[1.0.4,2.0)`。
