@@ -3,6 +3,25 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
+## Unreleased (2.0.0-SNAPSHOT.3)
+
+### Combat
+
+- **"Angerable tamable animals" now count as hostile targets** (2026-09-27 user ruling; ported to this snapshot
+  line from the `main` line's `1.0.5`): the criterion in `combat/HostileTargets` is extended from
+  "hostile mobs + neutral mobs (pets excluded)" to "... + angerable tamable animals (pets excluded)".
+  - New private predicate `isAngerableTamedMount`: a `Mob` that is **tamable**
+    (`getOwner() == null` and not a tamed `TamableAnimal`) and **angerable**
+    (`Mob#getTarget() != null`, or `LivingEntity#getLastHurtByMob() != null`) now counts as a hostile target.
+  - Covers vanilla **llamas / trader llamas** -- they retaliate when hit and are tamable, yet they do not
+    implement `NeutralMob`, so they were covered neither by the neutral branch nor by `Enemy`
+    => they used to be unselectable in the target selector.
+  - Note: the predicate deliberately avoids class/package names: 26.1.2 renamed `animal/horse/**`
+    to `animal/equine/**`, so hard-coded class paths would break the shared `common` sources.
+  - Note: it also avoids `Mob#isAggressive()`: its meaning is mob-specific -- `Panda` overrides it to mean
+    the "aggressive gene" (a permanent personality, not current anger), while `Llama` does not override it
+    (always `false`).
+
 ## Unreleased (2.0.0-SNAPSHOT.2)
 
 ### Combat
