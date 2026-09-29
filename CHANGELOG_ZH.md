@@ -3,6 +3,24 @@
 > 本文件仅收录中文更新日志；英文版见 [`CHANGELOG.md`](CHANGELOG.md)。
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 
+## 1.0.5-alpha.1
+
+> 2026-09-29 用户裁决：本线（`fabric-1.20.1` 分支）为**开发线**，版本号起用 **`-alpha.x` 预发布后缀**，
+> 基线退回 **1.0.5**（`1.0.6` / `1.0.7` / `1.0.8` 系本地临时构建，不作为对外号）。
+
+### 修复
+
+- **`AstralRarities` 的映射相关反射**（fabric 子项目）：原用 `Rarity.class.getDeclaredField("color")` 与
+  `getDeclaredField("$VALUES")` **按字符串名**取原版字段。Fabric 的 dev(named) 与生产(intermediary) 是**两套映射**
+  （`Rarity` 在生产叫 `class_1814`，两字段分别叫 `field_8908` / `field_8905`）⇒ 本库的消费方在**正式环境 100% 启动崩**
+  （`NoSuchFieldException: color` → `ExceptionInInitializerError` → 入口点失败，玩家进不去游戏）。
+  改为**按类型 / 修饰符查找**（`lookupColorField` / `lookupValuesField`），两套映射下都成立。
+  其余反射（`Unsafe.theUnsafe`、`Enum.name` / `ordinal`）目标是 **JDK 成员**，不受重映射影响，保持不变。
+- static 块的 `catch (ReflectiveOperationException)` 放宽为 `catch (Throwable)` —— 新增的 `IllegalStateException`
+  需同样包成 `ExceptionInInitializerError`（否则失败形态退化为裸 RuntimeException）。
+- ⚠️ **只改 fabric 子项目**：另三平台生产用 Mojang 官方映射（`color` 本就是 `color`），不受影响、未改动。
+  这是**平台必需差异**，已在 `AstralRarities` 的源码注释里写明理由。
+
 ## 未发布
 
 > 下列为**构建脚本 / 文档**改动，不涉及 jar 内容 ⇒ **不 bump 版本号、不重新发布**；

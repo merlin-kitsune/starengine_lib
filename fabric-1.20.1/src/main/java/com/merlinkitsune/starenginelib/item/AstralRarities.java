@@ -21,7 +21,8 @@ import java.util.Arrays;
  * <pre>
  *   public final class Rarity extends Enum&lt;Rarity&gt; {
  *       public static final Rarity COMMON, UNCOMMON, RARE, EPIC;
- *       public final ChatFormatting color;      // ← 唯一的颜色通道
+ *       public final ChatFormatting color;      // ← 唯一的颜色通道（⚠️ 生产 intermediary 下叫 field_8908，
+ *                                               //    故下方一律**按类型**取字段，绝不按名字，见 lookupColorField）
  *       private Rarity(ChatFormatting);         // ← private 构造器,枚举
  *   }
  * </pre>
@@ -87,12 +88,12 @@ public final class AstralRarities {
             UNSAFE = (Unsafe) theUnsafe.get(null);
             ENUM_NAME_OFFSET = UNSAFE.objectFieldOffset(Enum.class.getDeclaredField("name"));
             ENUM_ORDINAL_OFFSET = UNSAFE.objectFieldOffset(Enum.class.getDeclaredField("ordinal"));
-            RARITY_COLOR_OFFSET = UNSAFE.objectFieldOffset(net.minecraft.world.item.Rarity.class.getDeclaredField("color"));
-            Field values = net.minecraft.world.item.Rarity.class.getDeclaredField("$VALUES");
+            RARITY_COLOR_OFFSET = UNSAFE.objectFieldOffset(lookupColorField(net.minecraft.world.item.Rarity.class));
+            Field values = lookupValuesField(net.minecraft.world.item.Rarity.class);
             RARITY_VALUES_OFFSET = UNSAFE.staticFieldOffset(values);
             RARITY_VALUES_BASE = UNSAFE.staticFieldBase(values);
-        } catch (ReflectiveOperationException e) {
-            throw new ExceptionInInitializerError(e);
+        } catch (Throwable t) {
+            throw new ExceptionInInitializerError(t);
         }
         // 必须在任何物品构造之前触发(消费方在 ModItems 注册期调用下列访问器,天然满足)。
         // 先读一个原版常量 ⇒ 保证 Rarity.<clinit> 已跑完($VALUES 已建好),再往后面追加。
@@ -105,6 +106,44 @@ public final class AstralRarities {
         LEGENDARY = synthesize(Rarity.LEGENDARY.constantName(), ChatFormatting.GOLD);
         PINNACLE = synthesize(Rarity.PINNACLE.constantName(), ChatFormatting.RED);
         BIZARRE = synthesize(Rarity.BIZARRE.constantName(), ChatFormatting.RED);
+    }
+
+    /**
+     * 定位原版 {@code Rarity} 的颜色字段：**按类型匹配，不按名字**。
+     *
+     * <p>⚠️ 硬约束（2026-09-29 生产事故 KI-F13，**勿回退为按名反射**）：
+     * Fabric 的 **dev 与生产是两套映射** —— dev（Loom named）里
+     * {@code net.minecraft.world.item.Rarity} 的字段就叫 {@code color}，
+     * 而生产（intermediary）里同一个类是 {@code net.minecraft.class_1814}、
+     * 该字段名被重映射成 {@code field_8908}。⇒ 任何**按字符串名**反射原版成员的写法
+     * 都在 dev 全绿、在整合包里 100% 崩（{@code NoSuchFieldException: color}
+     * → {@code ExceptionInInitializerError} → 入口点失败 → 游戏进不去）。
+     * 按**类型**匹配对两套映射同时成立。
+     */
+    private static Field lookupColorField(Class<?> rarityClass) {
+        for (Field field : rarityClass.getDeclaredFields()) {
+            if (field.getType() == ChatFormatting.class) {
+                return field;
+            }
+        }
+        throw new IllegalStateException(
+                "vanilla Rarity has no ChatFormatting-typed field: " + rarityClass.getName());
+    }
+
+    /**
+     * 定位枚举的 {@code $VALUES} 后备数组：**按修饰符 + 组件类型匹配，不按名字**
+     * （理由同 {@link #lookupColorField}；intermediary 下该字段名是 {@code field_8905}）。
+     */
+    private static Field lookupValuesField(Class<?> rarityClass) {
+        for (Field field : rarityClass.getDeclaredFields()) {
+            if (java.lang.reflect.Modifier.isStatic(field.getModifiers())
+                    && field.getType().isArray()
+                    && field.getType().getComponentType() == rarityClass) {
+                return field;
+            }
+        }
+        throw new IllegalStateException(
+                "vanilla Rarity has no Rarity[] static field: " + rarityClass.getName());
     }
 
     private AstralRarities() {

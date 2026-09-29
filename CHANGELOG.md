@@ -3,6 +3,29 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
+## 1.0.5-alpha.1
+
+> Decided by the user on 2026-09-29: this line (branch `fabric-1.20.1`) is a **development line**, so version
+> numbers now carry an **`-alpha.x` pre-release suffix**, with the baseline rolled back to **1.0.5**
+> (`1.0.6` / `1.0.7` / `1.0.8` were local throwaway builds and are not used as public numbers).
+
+### Fixes
+
+- **Mapping-dependent reflection in `AstralRarities`** (fabric subproject): it reached vanilla fields **by string name**
+  via `Rarity.class.getDeclaredField("color")` and `getDeclaredField("$VALUES")`. Fabric uses **two different
+  mappings** for dev (named) and production (intermediary) — `Rarity` is `class_1814` in production, with the two
+  fields named `field_8908` / `field_8905` — so consumers of this library **failed to start 100% of the time in
+  production** (`NoSuchFieldException: color` → `ExceptionInInitializerError` → entrypoint failure; the game could
+  not be launched). The lookup is now **by type / modifiers** (`lookupColorField` / `lookupValuesField`), which holds
+  under both mappings. The remaining reflection (`Unsafe.theUnsafe`, `Enum.name` / `ordinal`) targets **JDK members**
+  and is unaffected by remapping, so it is unchanged.
+- The static block's `catch (ReflectiveOperationException)` is widened to `catch (Throwable)` — the newly added
+  `IllegalStateException` must be wrapped into `ExceptionInInitializerError` the same way, otherwise the failure
+  degrades into a bare RuntimeException.
+- ⚠️ **fabric subproject only**: the other three platforms use Mojang official mappings in production
+  (`color` really is `color`), so they are unaffected and were left untouched. This is a **platform-required
+  difference**, documented in the `AstralRarities` source comments.
+
 ## Unreleased
 
 > The entries below are **build-script / documentation** changes with no effect on jar contents, so
