@@ -14,16 +14,12 @@
   "entrypoints": {
     "main": [
       "com.merlinkitsune.starenginelib.StarEngineLib"
-    ],
-    "cardinal-components-entity": [
-      "com.merlinkitsune.starenginelib.economy.FabricEconomyStorage"
     ]
   },
   "depends": {
     "fabricloader": ">=${loader_version}",
     "minecraft": "${minecraft_version_range}",
     "fabric-api": "*",
-    "cardinal-components-base": ">=${cca_version}",
-    "cardinal-components-entity": ">=${cca_version}"
+    "fabric-data-attachment-api-v1": "*"
   }
 }

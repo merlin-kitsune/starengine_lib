@@ -11,6 +11,7 @@ import dev.emi.trinkets.api.TrinketComponent;
 import dev.emi.trinkets.api.TrinketInventory;
 import dev.emi.trinkets.api.TrinketsApi;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.item.ItemStack;
 
 /**
@@ -57,6 +58,32 @@ public final class TrinketsCompat {
         SlotInventory getStacks();
 
         int getSlots();
+
+        /**
+         * 该槽位组当前的属性修饰符(Curios {@code ICurioStacksHandler#getModifiers})。
+         *
+         * <p>⚠️ **两平台 key 类型一致、可直接复用**:Curios 侧是 {@code Map<String, AttributeModifier>}
+         * (key = modifier 的 id 字符串),Trinkets 侧是 {@code Map<UUID, AttributeModifier>}
+         * (key = modifier 的 UUID)。本模组的两个槽位修饰符常量本身就是 {@link java.util.UUID}
+         * (见 {@code DiceCurioItem#CHIP_SLOT_MODIFIER} / {@code #CURIO_LEGACY_MODIFIER}),
+         * 故这里**直接采用 UUID**,与 Trinkets 原生签名一致、零转换。
+         *
+         * <p>Trinkets 的 {@code TrinketInventory} 以「baseSize + 修饰符运算结果」决定槽位数
+         * (javap 实证字段:{@code baseSize} / {@code modifiersByOperation} /
+         * {@code getModifiersByOperation}),与 Curios 用修饰符增量控制槽位数的机制**同源**
+         * ⇒ 动态筹码槽位(随骰子星级增长)可原样移植。
+         */
+        Map<java.util.UUID, AttributeModifier> getModifiers();
+
+        /** 按 UUID 移除修饰符(Curios {@code removeModifier(String)} 的 UUID 版)。 */
+        void removeModifier(java.util.UUID id);
+
+        /** 登记一个**持久**修饰符(Curios {@code addPermanentModifier};Trinkets 侧名为
+         *  {@code addPersistentModifier})。随存档保留。 */
+        void addPermanentModifier(AttributeModifier modifier);
+
+        /** 提交变更并触发同步(Curios {@code update()})。 */
+        void update();
     }
 
     /** Curios {@code SlotResult} 的等价物:命中的槽位标识 / 序号 / 物品栈。 */
@@ -103,6 +130,21 @@ public final class TrinketsCompat {
             return findFirstCurio(predicate).isPresent();
         }
 
+        /** 全部命中谓词的已装备物品(Curios {@code findCurios} 的等价物,按槽位组顺序展开)。 */
+        public java.util.List<SlotResult> findCurios(Predicate<ItemStack> predicate) {
+            java.util.List<SlotResult> out = new java.util.ArrayList<>();
+            for (Map.Entry<String, SlotHandler> entry : handlers.entrySet()) {
+                SlotInventory stacks = entry.getValue().getStacks();
+                for (int i = 0; i < stacks.getSlots(); i++) {
+                    ItemStack stack = stacks.getStackInSlot(i);
+                    if (!stack.isEmpty() && predicate.test(stack)) {
+                        out.add(new SlotResult(entry.getKey(), i, stack));
+                    }
+                }
+            }
+            return out;
+        }
+
         /** 某一槽位组的全部已装备物品(Curios {@code getStacksHandler} + 遍历)。 */
         public java.util.List<ItemStack> getAllIn(String identifier) {
             SlotHandler handler = handlers.get(identifier);
@@ -136,6 +178,27 @@ public final class TrinketsCompat {
         @Override
         public int getSlots() {
             return inventory.getContainerSize();
+        }
+
+        @Override
+        public Map<java.util.UUID, AttributeModifier> getModifiers() {
+            return inventory.getModifiers();
+        }
+
+        @Override
+        public void removeModifier(java.util.UUID id) {
+            inventory.removeModifier(id);
+        }
+
+        @Override
+        public void addPermanentModifier(AttributeModifier modifier) {
+            // Curios 名 addPermanentModifier ↔ Trinkets 名 addPersistentModifier(语义一致:随存档保留)
+            inventory.addPersistentModifier(modifier);
+        }
+
+        @Override
+        public void update() {
+            inventory.update();
         }
     }
 
