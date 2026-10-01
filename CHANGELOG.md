@@ -3,7 +3,7 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
-## Unreleased (2.0.0-SNAPSHOT.5)
+## Unreleased (2.0.0-SNAPSHOT.6)
 
 ### Combat
 
@@ -37,6 +37,11 @@
   Releases; the §4.4 table now reads "nothing is uploaded / Release assets: none", plus a policy note at the top of
   that section; the CI JDK count was corrected from "dual (21 + 17)" to the three toolchains 21 / 17 / 25).
   Historical "Release asset" mentions in older CHANGELOG sections are **kept** as a record of the facts then.
+- The three platforms' `build.gradle` "build artifact deployment" comment no longer points at "fetch a jar
+  from this repository's Releases" (it now says: no jar downloads here, build from source instead) - the
+  previous version only covered the `main` / `fabric-1.20.1` lines and missed this one. Per this line's
+  AGENTS §1 ("one bump per commit", no exception) a comment-only commit still bumps: `2.0.0-SNAPSHOT.5`
+  -> **`2.0.0-SNAPSHOT.6`**.
 
 ## Unreleased (2.0.0-SNAPSHOT.2)
 
