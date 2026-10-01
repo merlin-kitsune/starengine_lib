@@ -3,6 +3,60 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
+## 1.0.6 / 1.0.5-alpha.2
+
+> This change touches the **`common` source shared by all four platforms**, so all four artifacts are
+> re-versioned together: the three platforms go `1.0.5` -> **`1.0.6`**, and the fabric subproject goes
+> `1.0.5-alpha.1` -> **`1.0.5-alpha.2`** (`1.0.6` / `1.0.7` / `1.0.8` were ruled on 2026-09-29 to be
+> "local throwaway builds, not public numbers", so that number is **not** reused; this line keeps
+> incrementing its `-alpha.N` suffix).
+
+### Fixes
+
+- **Two reflection targets in `event/EventTargetCollector` did not exist at all** (shared `common` code):
+  both the FTB Teams and the OPAC backend were **permanently disabled and completely silent** - the
+  outermost `catch (Exception ignored)` swallowed every `NoSuchMethodException` / `ClassNotFoundException`.
+  Consequence: players running FTB Teams or OPAC were classified as "in no team at all", falling into the
+  "everyone on the server counts as friendly" fallback, so **team detection was entirely broken**.
+  Corrected item by item against the upstream artifacts (`file:line`; evidence in the class javadoc
+  "verification baseline"):
+  - FTB's four manager accessors are declared on the **nested interface** `FTBTeamsAPI$API`, not on the
+    outer class - and `Class#getMethod` does **not** reach into a nested interface the outer class does
+    not implement;
+  - the real server-side accessor is `TeamManager#getTeamForPlayerID(UUID)`; the `getTeamForPlayer(UUID)`
+    / `getTeamForPlayer(Player)` the old code looked up **do not exist**;
+  - the client side is `ClientTeamManager#getKnownPlayer(UUID)` + `KnownClientPlayer#teamId()`
+    (a **record** accessor, **no `get` prefix**) + `getTeamByID(UUID)`; the old code's
+    `ClientTeamManager#getTeamForPlayer(Player)` does not exist;
+  - OPAC's package path is really **`xaero.pac.*`** (the old code's `dev.darkhax.opac.*` simply does not
+    exist). Correct chain: `OpenPACServerAPI.get(MinecraftServer)` -> `getPartyManager()` ->
+    `IPartyManagerAPI#getPartyByMember(UUID)`; the member accessor is
+    `IServerPartyAPI#getOnlineMemberStream()` - the old code's `getPartyMembers()` does not exist.
+- **`hasAnyTeam` now uses party / server team for FTB instead of "a Team object exists"**
+  (`Team#isPartyTeam() || Team#isServerTeam()`): FTB gives **every** player a personal team, so the old
+  criterion was always true and completely disabled the "no team => affect everyone on the server"
+  fallback.
+- **Resolution failures are no longer silent**: added `public static String describeBackends()`, emitting
+  an assertable machine line `AP_LIB_PARTY: back_ftb=... back_opac=... why_ftb=... why_opac=...`.
+  "Not installed" (`ClassNotFoundException`) logs at debug; "installed but signatures do not match" logs
+  at warn - the latter is the real problem developers need to see.
+- **Public API only grows**: the signatures and semantics of `collectTeamPlayers` / `hasAnyTeam` are
+  unchanged; only `describeBackends()` and the constant `BACKEND_REPORT_PREFIX` were added, which the
+  1.x "no breaking changes within the same major version" contract allows.
+
+### Notes
+
+- The three client-path accessors are resolved as **optional**: their absence only means the client side
+  cannot read team info - it must **not** take the server-side detection down with it (that is a hard
+  requirement here: a single client call would otherwise hit `NoSuchMethodError` and trip "backend
+  disabled").
+- The OPAC backend stays **server-side only** (OPAC's client API only exposes the local player's own
+  party and cannot query two arbitrary players), same as before.
+- **Not done**: **ally parties** are not folded into member collection (this library only collects the
+  online members of the player's own party). The downstream consumer `astral_dice` additionally treats
+  OPAC allies as the same team in `PartyRelations#isSameTeam` - the two are **intentionally different**
+  for now; unifying them needs a separate ruling.
+
 ## 1.0.5-alpha.1
 
 > Decided by the user on 2026-09-29: this line (branch `fabric-1.20.1`) is a **development line**, so version

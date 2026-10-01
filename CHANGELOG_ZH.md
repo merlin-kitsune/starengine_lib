@@ -3,6 +3,48 @@
 > 本文件仅收录中文更新日志；英文版见 [`CHANGELOG.md`](CHANGELOG.md)。
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 
+## 1.0.6 / 1.0.5-alpha.2
+
+> 本次改动落在**四平台共用的 `common` 源码** ⇒ 四个 artifact 必须同批换号：三平台 `1.0.5` → **`1.0.6`**；
+> fabric 子项目 `1.0.5-alpha.1` → **`1.0.5-alpha.2`**（该子项目的 `1.0.6` / `1.0.7` / `1.0.8` 已按 2026-09-29
+> 裁决作为「本地临时构建、不作对外号」，故**不复用**该号，按本线既有 scheme 继续递增 `-alpha.N`）。
+
+### 修复
+
+- **`event/EventTargetCollector` 的 FTB Teams / OPAC 两处反射**目标**根本不存在**（四平台共用代码）：
+  这两个后端此前**恒为未启用且毫无声响** —— 最外层 `catch (Exception ignored)` 把
+  `NoSuchMethodException` / `ClassNotFoundException` 全部吞掉。实测后果：装了 FTB Teams 或 OPAC 的玩家
+  被本库判为「没有任何队伍」⇒ 落进「全服皆友方」兜底 ⇒ **队友判定整体失效**。逐条更正
+  （每条都以上游实物的 `文件:行号` 为准，证据见源码类头「核验基准」）：
+  - FTB 的四个管理器访问器声明在**嵌套接口** `FTBTeamsAPI$API` 上 —— 不在外层类上，
+    而 `Class#getMethod` **不会**跨到嵌套接口（外层类并未实现它）；
+  - 服务端取队伍的真实签名是 `TeamManager#getTeamForPlayerID(UUID)`；原代码查的
+    `getTeamForPlayer(UUID)` / `getTeamForPlayer(Player)` **一个都不存在**；
+  - 客户端取队伍是 `ClientTeamManager#getKnownPlayer(UUID)` + `KnownClientPlayer#teamId()`
+    （record 访问器，**没有 get 前缀**）+ `getTeamByID(UUID)`；原代码查的
+    `ClientTeamManager#getTeamForPlayer(Player)` 不存在；
+  - OPAC 的包路径真实为 **`xaero.pac.*`**（原代码查的 `dev.darkhax.opac.*` **整条不存在**）；
+    正确入口链 = `OpenPACServerAPI.get(MinecraftServer)` → `getPartyManager()` →
+    `IPartyManagerAPI#getPartyByMember(UUID)`；成员访问器是
+    `IServerPartyAPI#getOnlineMemberStream()`，原代码查的 `getPartyMembers()` 不存在。
+- **`hasAnyTeam` 的 FTB 判据由「Team 对象非空」改为 party / server team**
+  （`Team#isPartyTeam() || Team#isServerTeam()`）：FTB 给**每个玩家**都建了个人队伍 ⇒ 旧判据恒为真，
+  把「未组队 ⇒ 友方作用于全服」的兜底彻底堵死。
+- **解析失败不再静默**：新增 `public static String describeBackends()`，打出可断言的机器行
+  `AP_LIB_PARTY: back_ftb=… back_opac=… why_ftb=… why_opac=…`；「没装」（`ClassNotFoundException`）记 debug、
+  「装了但签名不符」记 warn —— 后者才是开发者需要关注的真问题。
+- ⚠️ **公共 API 只增不减**：`collectTeamPlayers` / `hasAnyTeam` 的签名与语义不变，仅**新增**
+  `describeBackends()` 与常量 `BACKEND_REPORT_PREFIX` ⇒ 符合 1.x「主版本不变禁止破坏性更新」的契约。
+
+### 说明
+
+- 客户端路径的三项访问器按**可选**解析：缺失只让客户端拿不到队伍信息，**不会**把服务端判定一起关掉
+  （这一点在实现上是硬要求 —— 否则一次客户端调用会因 `NoSuchMethod` 触发「后端停用」）。
+- OPAC 后端**仅服务端**（OPAC 的客户端 API 只暴露本地玩家自己的 party，无法查询任意两名玩家），与改动前同口径。
+- ⚠️ **未做**：OPAC 的<b>盟友队伍</b>未并入成员收集（本库只收「自己 party 的在线成员」）。
+  下游消费方 `astral_dice` 的 `PartyRelations#isSameTeam` 额外把盟友视为同队 —— 两者目前**有意不同**，
+  若要统一需另行裁决。
+
 ## 1.0.5-alpha.1
 
 > 2026-09-29 用户裁决：本线（`fabric-1.20.1` 分支）为**开发线**，版本号起用 **`-alpha.x` 预发布后缀**，
