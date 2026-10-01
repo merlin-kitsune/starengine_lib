@@ -3,6 +3,26 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
+## 1.0.6-alpha.1
+
+> **Renumbering of the fabric sub-project only - no bytecode change whatsoever.** Per the user's decision of
+> 2026-10-01, this sub-project's **major version** is brought in line with the other three platforms at
+> `1.0.6` while keeping the `-alpha.N` pre-release suffix, i.e. `1.0.5-alpha.2` -> **`1.0.6-alpha.1`**. Its
+> contents are **identical** to `1.0.5-alpha.2` (the FTB Teams / OPAC reflection fix in the next section - all
+> four platforms share the same `common` sources).
+> Note: the three **bare** numbers `1.0.6` / `1.0.7` / `1.0.8` this sub-project once produced are still
+> "local throwaway builds, never an official number" and have been purged from `mavenLocal` (moved to a
+> quarantine folder); `1.0.6-alpha.1` is **not the same string**, so this is not a reuse.
+> The three platforms (`1.0.6`) and the fabric sub-project (`1.0.6-alpha.1`) still advance independently: the
+> former is a **release number**, the latter a **pre-release number for the development line**.
+
+### Changes
+
+- fabric sub-project `lib_version` / `mod_version`: `1.0.5-alpha.2` -> **`1.0.6-alpha.1`** (the
+  `+fabric_1.20.1` suffix is unchanged).
+- The three platforms keep `1.0.6`.
+- The consumer `astral_dice`'s fabric line now pins `1.0.6-alpha.1` with the range `>=1.0.6-alpha.1 <2.0`.
+
 ## 1.0.6 / 1.0.5-alpha.2
 
 > This change touches the **`common` source shared by all four platforms**, so all four artifacts are
