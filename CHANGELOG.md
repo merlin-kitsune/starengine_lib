@@ -3,6 +3,36 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
+## 1.0.7 / 1.0.6-alpha.2
+
+> This change lands in the `common` sources shared by **all four platforms** => all four artifacts must be
+> renumbered together: the three platform lines go `1.0.6` -> **`1.0.7`**; the fabric subproject goes
+> `1.0.6-alpha.1` -> **`1.0.6-alpha.2`** (the **bare** numbers `1.0.6` / `1.0.7` / `1.0.8` of that subproject were
+> ruled "local temporary builds, never public numbers" on 2026-09-29, so they are **not** reused — the line
+> keeps incrementing its own `-alpha.N` scheme).
+
+> Note on classification (important, for future readers): this release changes a **player-visible balance value**
+> (the Cursed Sword's stacking bonus cap is doubled), not merely a bug fix. Read strictly, the 1.x compatibility
+> contract's "must not change ... existing semantics" could be taken to cover it; the library's position is that the
+> field's **contract semantics** (the meaning "the cap on the Cursed Sword's stacking bonus") are **unchanged**, as are
+> its type / name / visibility / signature, and consumers need **zero code changes** => this falls under the explicitly
+> allowed "**behaviour fixes that do not change the contract**" and ships in a patch position. **This follows the
+> `1.0.3` precedent** ("gameplay-criteria special case", user ruling 2026-09-24: the hostile-target criteria rewrite
+> should have bumped the major version but was ruled into a patch release) - recorded explicitly here so that a patch
+> position is not later misread as a contract breach.
+
+### Changes
+
+- `component/GameplayConstants#CURSED_SWORD_BONUS_MAX`: **16 -> 32** (user ruling, 2026-10-02).
+  A pure value change that alters no public type / method / field signature, visibility or semantic shape, so it
+  is a non-breaking fix permitted by the 1.x compatibility contract; consumers need **no** code change (both
+  `CursedSwordChipItem#onKill` and the tooltip renderer read the field directly).
+- Three platform lines' `lib_version` / `mod_version`: `1.0.6` -> **`1.0.7`**.
+- fabric subproject's `lib_version` / `mod_version`: `1.0.6-alpha.1` -> **`1.0.6-alpha.2`**.
+- The consumer `astral_dice` moves its pins and ranges in the same batch (three lines `1.0.6` / `[1.0.6,2.0)`
+  -> `1.0.7` / `[1.0.7,2.0)`; fabric line `1.0.6-alpha.1` / `>=1.0.6-alpha.1 <2.0` ->
+  `1.0.6-alpha.2` / `>=1.0.6-alpha.2 <2.0`).
+
 ## 1.0.6-alpha.1
 
 > **Renumbering of the fabric sub-project only - no bytecode change whatsoever.** Per the user's decision of
