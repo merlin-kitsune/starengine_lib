@@ -216,18 +216,26 @@ dependencies {
 `NoSuchMethodError` / `NoClassDefFoundError`，且**很难定位**（现象与「库没随模组更新」完全相同）。
 
 正确做法：**整合包 `mods` 目录里只放 `astral_dice-*.jar`**，库由它内嵌携带。
-确需单独放一份库 jar 做 A/B 时，请从本仓 Release 手动取用，用完即删。
+
+⚠️ **本仓库不提供任何 jar 下载**（2026-10-01 起的政策）。这里没有东西可下：Release 页只保留
+**GitHub 自动生成的源码归档**，且 CI 会主动删除它发现的任何 jar 附件。若你确实需要一份独立 jar 做
+A/B 测试，请自行从源码构建（`./gradlew build`，见 §4）。
 
 ### 4.4 CI / 自动 Release（GitHub Actions）
+
+⚠️ **本仓库不分发任何 jar —— 只保留源码**（2026-10-01 起的政策，理由见 §4.3）。
+CI 仍会构建全部平台，但那只是**编译校验**：既不上传构建产物，也不往 Release 挂 jar；一旦发现
+Release 上存在 jar 附件就删除。（原因不是「舍不得给」：一份被单独下载的库会**静默盖掉**消费方模组
+内嵌的那一份，而后者的故障极难定位 —— 见 §4.3。）
 
 仓库托管于 <https://github.com/merlin-kitsune/starengine_lib>，工作流 `.github/workflows/build.yml`
 沿用消费方 Astral Dice 的发布规范：
 
 | 触发 | 行为 |
 |---|---|
-| push / PR / 手动 | 双 JDK（21 + 17）→ `./gradlew build` → 上传 `starengine_lib-jars` 构建产物 |
+| push / PR / 手动 | 三套 JDK toolchain（21 / 17 / 25）→ `./gradlew build` —— **只做编译校验：什么都不上传**（jar 留在 runner 上） |
 | push 到 `main` 且版本号为**正式版** | 自动打 tag（tag = 基础版本号，如 `1.0.0`，无 `v` 前缀、无 `+加载器` 后缀） |
-| push tag `/^[0-9]/` | 创建/更新 GitHub Release，附件 = 两个平台的 jar |
+| push tag `/^[0-9]/` | 创建/更新 GitHub Release —— **附件：无**（只有源码归档）；发现 jar 附件即删除 |
 
 > tag 规则比消费方多一道守卫：版本号含 `-`（即快照）时**不打 tag**。
 > 否则 `1.0.0-SNAPSHOT.2` 会被 `%%-*` 截成 `1.0.0` 并自动打出正式 tag，把未定型的快照误标为发布。

@@ -237,19 +237,27 @@ symptom is a plain `NoSuchMethodError` / `NoClassDefFoundError` — and it is **
 exactly like "the library did not ship with the mod".
 
 Correct practice: **keep only `astral_dice-*.jar` in the modpack `mods` folder**; the library rides inside it.
-If you really need a standalone jar for A/B testing, download it from this repository's Releases and delete it
-afterwards.
+
+⚠️ **This repository publishes no jars at all** (since 2026-10-01). There is nothing to download here: the Releases page
+carries **only the automatically generated source archives**, and CI actively deletes any jar asset it finds. If you
+believe you need a standalone jar for A/B testing, build it yourself from source (`./gradlew build`, see §4).
 
 ### 4.4 CI / automatic releases (GitHub Actions)
+
+⚠️ **This repository distributes no jars — source code only** (policy of 2026-10-01; rationale in §4.3).
+CI still builds every platform as a compile check, but it uploads **no** build artifact and attaches
+**no** jar to the Release; any jar asset found on a Release is deleted. (The reason is not stinginess: an
+independently downloaded copy of the library silently shadows the copy the consumer mod embeds, and the
+resulting failure is very hard to diagnose — see §4.3.)
 
 The repository is hosted at <https://github.com/merlin-kitsune/starengine_lib>, and the workflow
 `.github/workflows/build.yml` follows the consumer Astral Dice release convention:
 
 | Trigger | Behaviour |
 |---|---|
-| push / PR / manual | dual JDK (21 + 17) → `./gradlew build` → upload the `starengine_lib-jars` build artifact |
+| push / PR / manual | triple JDK toolchains (21 / 17 / 25) → `./gradlew build` — **compile check only: nothing is uploaded** (the jars stay on the runner) |
 | push to `main` with a **final** version number | tag automatically (tag = the base version, e.g. `1.0.0`, no `v` prefix, no `+loader` suffix) |
-| push a tag matching `/^[0-9]/` | create/update the GitHub Release, with both platform jars as assets |
+| push a tag matching `/^[0-9]/` | create/update the GitHub Release — **assets: none** (source archives only); existing jar assets are deleted |
 
 > The tag rule has one extra guard compared with the consumer: when the version contains `-` (i.e. a snapshot)
 > it does **not** tag. Otherwise `1.0.0-SNAPSHOT.2` would be truncated by `%%-*` to `1.0.0` and an unfinalised

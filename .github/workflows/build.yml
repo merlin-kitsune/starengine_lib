@@ -29,7 +29,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup JDK 17 (1.20.1 Forge)
-        # common/src/main/java 会被三个平台各编译一次,Java 17 侧用于强制
+        # common/src/main/java 会被每个平台各编译一次,Java 17 侧用于强制
         # 「共享源码不得使用 Java 21 独有语法」这一约束,故 17 必须存在。
         uses: actions/setup-java@v4
         with:
@@ -49,12 +49,15 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build with Gradle (all three targets)
-        # 三侧产物:neoforge-1.21.1/build/libs  普通 jar(Mojmap,无需重映射)
+      - name: Build with Gradle (all platforms)
+        # 产物清单(main 分支为三平台;fabric-1.20.1 分支另有 fabric 子项目):
+        #           neoforge-1.21.1/build/libs  普通 jar(Mojmap,无需重映射)
         #           forge-1.20.1/build/libs     reobfJar(生产 SRG jar)
         #           neoforge-26.1.2/build/libs  普通 jar(Mojmap,无需重映射)
         # 说明:各平台 build **只产出 jar**,不触碰任何整合包目录
         # (2026-09-24 移除了 pushToPack —— 本库现由消费方 astral_dice 以 JarJar 内嵌携带)。
+        # ⚠️ 2026-10-01 政策:这些 jar **只作为构建产物留在 runner 上** —— 既不上传 artifact,
+        #    也不挂到 Release(见下方 Release 步骤的说明)⇒ 本仓对外**不提供任何 jar 下载**。
         # ⚠️ 失败时把**失败块**(`FAILURE: Build failed with an exception.` 起)提炼成 ::error 注解:
         #    job log 的下载接口需要仓库 admin 权限(403),而 check-run 的 annotations 端点
         #    **无需**凭据即可读(run 摘要页也直接可见)⇒ 把失败块搬进注解,CI 红了时不必先拿 token。
@@ -63,7 +66,7 @@ jobs:
           set -o pipefail
           LOG="$RUNNER_TEMP/gradle-build.log"
           if ./gradlew build --stacktrace 2>&1 | tee "$LOG"; then
-            echo "Gradle build OK (all three targets)"
+            echo "Gradle build OK (all platforms)"
           else
             RC=$?
             DIAG=$(mktemp)
@@ -78,15 +81,6 @@ jobs:
             echo "::error title=Gradle build failed (exit $RC)::${ANSI}"
             exit "$RC"
           fi
-
-      - name: Upload StarEngine Lib JARs
-        uses: actions/upload-artifact@v4
-        with:
-          name: starengine_lib-jars
-          path: |
-            neoforge-1.21.1/build/libs/starengine_lib-*.jar
-            forge-1.20.1/build/libs/starengine_lib-*.jar
-            neoforge-26.1.2/build/libs/starengine_lib-*.jar
 
       - name: Read lib version
         id: version
@@ -128,13 +122,20 @@ jobs:
           # 交给下一步发布 Release(同 job:tag 已保证存在)
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Create/Update GitHub Release (three JARs)
-        # 发布 Release 的两种来源(均在**同一个 job 内**完成,附件 = 刚构建的三个 jar):
+      - name: Create/Update GitHub Release (source code only — no JAR assets)
+        # ⚠️ 2026-10-01 政策变更(用户裁决):**本库不再对外分发任何 jar,只保留源码。**
+        #    原因:本库自 2026-09-24 起由消费方 `astral_dice` 以 JarJar 内嵌携带;FML 的 JarInJar
+        #    选择器按 **modId** 去重 —— 玩家/整合包作者若另下了一份独立库 jar,那一份会被优先采用,
+        #    版本比内嵌件旧时表现为 `NoSuchMethodError` / `NoClassDefFoundError`,且**极难定位**
+        #    (现象与「库没随模组更新」完全相同;详见 README §4.3)。
+        #    ⇒ 与其在下载页上写「请勿单独安装」,不如**根本不提供下载**:Release 只保留 GitHub
+        #    自动生成的源码归档(Source code (zip) / (tar.gz));jar 一律不上传,且**发现 jar 附件即
+        #    删除**(自愈 —— 历史遗留或误传都能被这一步清掉,重复执行幂等)。
+        # 发布 Release 的两种来源(均在**同一个 job 内**完成):
         #   ① main 分支 push:用上一步新建/已存在的 tag;
         #   ② ref 本身就是 tag(tag push,或对 tag 手动 workflow_dispatch 补发):直接用 GITHUB_REF 的 tag。
         # ⚠️ 不能依赖「tag push 再触发一次本 workflow」:由 GITHUB_TOKEN 推送的 tag **不会**触发
         # workflow(消费方 astral_dice 踩过同一个坑,故同样改为同 job 内发布)。
-        # 已存在同名 Release 时改为「编辑说明 + --clobber 覆盖附件」,保证重复发布幂等、附件与最新构建一致。
         if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.tag.outputs.tag != '')
         env:
           GH_TOKEN: ${{ github.token }}
@@ -146,40 +147,39 @@ jobs:
           fi
           echo "publishing release for tag: $TAG"
           BUILT="${{ steps.version.outputs.version }}"
-          # ⚠️ 附件必须**按版本号收紧**收集:`build/libs` 会累积历史产物(Gradle 不清理旧输出),
-          #    松散 glob 会把历次版本的 jar 一并传上去(本仓曾因此取到旧 jar 作为判据)。
-          #    收紧后若一个都没命中则直接失败 —— 不静默发布空附件。
-          JARS=()
-          for p in neoforge-1.21.1 forge-1.20.1 neoforge-26.1.2; do
-            for f in "$p"/build/libs/starengine_lib-*"-$BUILT.jar"; do
-              [[ -f "$f" ]] && JARS+=("$f")
-            done
-          done
-          if [[ ${#JARS[@]} -eq 0 ]]; then
-            echo "::error::no jar matching starengine_lib-*-$BUILT.jar was built — aborting"
-            exit 1
-          fi
-          printf 'collected jars: %s\n' "${JARS[*]}"
           # 说明正文写进临时文件后用 --notes-file 传入(与消费方同一做法)
           NOTES_FILE="$RUNNER_TEMP/starengine-lib-release-notes-$TAG.md"
           {
             printf '## StarEngine Lib %s\n\n' "$TAG"
             printf '构建版本 / build version: `%s`\n\n' "$BUILT"
-            printf '| 平台 / Platform | 附件 / Asset |\n|---|---|\n'
-            printf '| 1.21.1 (NeoForge) | `starengine_lib-neoforge-1.21.1-%s.jar` |\n' "$BUILT"
-            printf '| 1.20.1 (Forge) | `starengine_lib-forge-1.20.1-%s.jar` |\n' "$BUILT"
-            printf '| 26.1.2 (NeoForge) | `starengine_lib-neoforge-26.1.2-%s.jar` |\n' "$BUILT"
-            printf '\n本库是 **Astral Dice（星之骰戏）的必需前置**：请把与你的 MC 版本对应的这一个 jar 放进 `mods/`，与模组同批更新（两者必须成对，否则整合包会拒绝启动）。\n\n'
-            printf 'This library is a **required prerequisite of Astral Dice**: drop the jar matching your MC version into `mods/` and update it together with the mod (they must stay in pairs, otherwise the pack refuses to start).\n\n'
-            printf '兼容性契约见 README §6；自 `1.0.0` 起，同一主版本号内不做破坏性更新。\n'
+            printf '> ⚠️ **本仓库不分发任何 jar —— 此处只有上方 GitHub 自动生成的源码归档。**\n'
+            printf '> This repository ships **no jars** — only the automatic source archives above.\n\n'
+            printf '本库是 **Astral Dice（星之骰戏）** 的必需前置,但**无需、也不应单独安装**:消费方模组已用 JarJar 把本库内嵌在自身 jar 内,加载器启动时自动载入。\n'
+            printf '⛔ **请勿**再往 `mods/` 放独立库 jar —— 加载器按 modId 去重时会优先采用那一份,版本比内嵌件旧时表现为 `NoSuchMethodError` / `NoClassDefFoundError`。\n\n'
+            printf 'This library is a **required prerequisite of Astral Dice**, but needs **no separate install**: the consumer mod embeds it via JarJar and the loader picks it up at startup.\n'
+            printf '⛔ Do **not** drop a standalone library jar into `mods/` — the loader de-duplicates by modId and prefers that copy, and an older one shows up as `NoSuchMethodError` / `NoClassDefFoundError`.\n\n'
+            printf '开发者接入(自行 `clone` + `./gradlew publishToMavenLocal`)见 README §4;兼容性契约见 README §6 —— 自 `1.0.0` 起,同一主版本号内不做破坏性更新。\n'
           } > "$NOTES_FILE"
           echo "release notes: $(wc -c < "$NOTES_FILE") bytes"
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" --title "StarEngine Lib $TAG" --notes-file "$NOTES_FILE"
-            gh release upload "$TAG" "${JARS[@]}" --clobber
+            # 自愈:清掉该 Release 上一切 jar 附件(历史遗留 / 误传都在此被删)。
+            gh release view "$TAG" --json assets -q '.assets[].name' > "$RUNNER_TEMP/assets.txt" || true
+            while IFS= read -r name; do
+              if [[ -z "$name" ]]; then continue; fi
+              case "$name" in
+                *.jar)
+                  echo "removing jar asset (policy: source only): $name"
+                  gh release delete-asset "$TAG" "$name" --yes
+                  ;;
+                *)
+                  echo "keeping non-jar asset: $name"
+                  ;;
+              esac
+            done < "$RUNNER_TEMP/assets.txt"
           else
+            # 注意:**不带任何附件** —— Release 因此只含源码归档。
             gh release create "$TAG" \
-              "${JARS[@]}" \
               --title "StarEngine Lib $TAG" \
               --notes-file "$NOTES_FILE" \
               --latest

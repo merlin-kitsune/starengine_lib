@@ -18,6 +18,16 @@
 - 同步更新 `README_ZH` / `README`（§4.3 改写为「与整合包的关系」、构建命令注释、消费方式说明）
   与 `.github/workflows/build.yml` 的构建步骤注释。CHANGELOG 自身历史条目（`1.0.0` 等）中关于
   `pushToPack` 的描述**保留**，作为该机制存在时期的记录。
+- **本库不再对外分发任何 jar —— 只保留源码**（2026-10-01 用户裁决）。CI 的 `Upload StarEngine Lib JARs`
+  步骤整体删除：构建照跑（仍会产出 jar，但只留在 runner 上）；Release 步骤改为**不带任何附件**，
+  只保留 GitHub 自动生成的源码归档，并新增**自愈清理** —— 发现该 Release 上存在 `*.jar` 附件即
+  `gh release delete-asset` 删除（重复执行幂等）。历史存量同步清除：远端 `starengine_lib-jars`
+  artifacts **12 个全部删除**（Release 侧逐 tag 交叉核验为 **0** 个）。
+  原因与上面 `pushToPack` 那条同源：一份被单独下载的库会**静默盖掉**消费方内嵌的那一份，故障极难定位。
+  ⚠️ **消费方需要同步做的事：无** —— 仍按 `starengine_lib_version` 硬 pin + JarJar 内嵌，不受影响。
+- 同步更新 `README_ZH` / `README`（§4.3 删去「从本仓 Release 手动取用」、§4.4 表格改为「什么都不上传 /
+  Release 附件：无」并补政策顶注；顺带把 CI 的 JDK 计数由「双（21 + 17）」订正为三套 21 / 17 / 25）。
+  CHANGELOG 历史条目中关于「Release 附件」的表述**保留**，作为当时事实的记录。
 
 ## 1.0.5
 
