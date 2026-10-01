@@ -38,7 +38,11 @@ import java.util.stream.Stream;
  *   <li><b>FTB 管理器访问器在<b>嵌套接口</b>上</b>:{@code isManagerLoaded / getManager /
  *       isClientManagerLoaded / getClientManager} 声明在 {@code FTBTeamsAPI$API} 上,
  *       <b>不在</b>外层类 {@code FTBTeamsAPI} 上;{@code Class#getMethod} <b>不会</b>跨到嵌套接口
- *       (外层类并未实现它)。原代码直接在外层类上取 ⇒ 第一处即 {@code NoSuchMethodException}。</li>
+ *       (外层类并未实现它)。⚠️ 但**本库旧代码并不是在外层类上取** —— 它走 {@code api.getClass()},
+ *       那是 {@code api()} 返回的**实现类**,实现了该嵌套接口 ⇒ 那一步**能**解析成功;
+ *       **本库的实际首个失败点是下一条的 {@code getTeamForPlayer}**(外层类取访问器那一步是
+ *       下游消费方模组 {@code astral_dice} 的写法,两处写法不同、失败点也不同,勿混)。
+ *       为稳妥,本库同时保留「方法挪回外层类」的 fallback。</li>
  *   <li><b>服务端取队伍</b>只有 {@code TeamManager#getTeamForPlayer(ServerPlayer)} 与
  *       {@code TeamManager#getTeamForPlayerID(UUID)};原代码查的 {@code getTeamForPlayer(Player)} /
  *       {@code getTeamForPlayer(UUID)} <b>一个都不存在</b>(参数类型错 / 方法名错)。</li>

@@ -16,8 +16,13 @@
   `NoSuchMethodException` / `ClassNotFoundException` 全部吞掉。实测后果：装了 FTB Teams 或 OPAC 的玩家
   被本库判为「没有任何队伍」⇒ 落进「全服皆友方」兜底 ⇒ **队友判定整体失效**。逐条更正
   （每条都以上游实物的 `文件:行号` 为准，证据见源码类头「核验基准」）：
-  - FTB 的四个管理器访问器声明在**嵌套接口** `FTBTeamsAPI$API` 上 —— 不在外层类上，
-    而 `Class#getMethod` **不会**跨到嵌套接口（外层类并未实现它）；
+  - FTB 的四个管理器访问器（`isManagerLoaded` / `getManager` / `isClientManagerLoaded` /
+    `getClientManager`）声明在**嵌套接口** `FTBTeamsAPI$API` 上，**不在**外层类上 ——
+    而 `Class#getMethod` **不会**跨到嵌套接口（外层类并未实现它）⇒ 本库**新实现**按实测结论
+    从嵌套接口解析（并保留「方法挪回外层类」的 fallback）。
+    ⚠️ **更正一处早先的失实描述**：旧代码**并不是**在外层类上取这个访问器（它走 `api.getClass()`，
+    那是 `api()` 返回的实现类、能解析成功）—— **本库的实际首个失败点是下面的 `getTeamForPlayer`**；
+    「在外层类上取 ⇒ 当场抛」是**下游消费方模组** `astral_dice` 的写法，两者失败点不同。
   - 服务端取队伍的真实签名是 `TeamManager#getTeamForPlayerID(UUID)`；原代码查的
     `getTeamForPlayer(UUID)` / `getTeamForPlayer(Player)` **一个都不存在**；
   - 客户端取队伍是 `ClientTeamManager#getKnownPlayer(UUID)` + `KnownClientPlayer#teamId()`
@@ -63,6 +68,11 @@
 - ⚠️ **只改 fabric 子项目**：另三平台生产用 Mojang 官方映射（`color` 本就是 `color`），不受影响、未改动。
   这是**平台必需差异**，已在 `AstralRarities` 的源码注释里写明理由。
 
+
+- **文档更正（不改字节码）**：更正 `1.0.6 / 1.0.5-alpha.2` 一节里对「旧代码首个失败点」的失实描述 ——
+  本库旧代码走 `api.getClass()`（实现类，能解析嵌套接口方法），真正的首个失败点是 `getTeamForPlayer`；
+  「在外层类上取 ⇒ 当场抛」是下游消费方模组的写法。同步更正 `EventTargetCollector` 类 javadoc。
+  ⇒ 纯注释/文档改动，**不 bump 版本号、不重新发布**（已发布的 1.0.6 / 1.0.5-alpha.2 字节码不变）。
 ## 未发布
 
 > 下列为**构建脚本 / 文档**改动，不涉及 jar 内容 ⇒ **不 bump 版本号、不重新发布**；

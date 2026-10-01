@@ -20,9 +20,15 @@
   "everyone on the server counts as friendly" fallback, so **team detection was entirely broken**.
   Corrected item by item against the upstream artifacts (`file:line`; evidence in the class javadoc
   "verification baseline"):
-  - FTB's four manager accessors are declared on the **nested interface** `FTBTeamsAPI$API`, not on the
-    outer class - and `Class#getMethod` does **not** reach into a nested interface the outer class does
-    not implement;
+  - FTB's four manager accessors (`isManagerLoaded` / `getManager` / `isClientManagerLoaded` /
+    `getClientManager`) are declared on the **nested interface** `FTBTeamsAPI$API`, **not** on the
+    outer class - and `Class#getMethod` does **not** reach into a nested interface the outer class
+    does not implement - so the **new** implementation resolves them from the nested interface
+    (keeping a "moved back to the outer class" fallback).
+    **Correction to an earlier inaccurate statement**: the old code did **not** read that accessor off
+    the outer class (it went through `api.getClass()`, the implementation class, which resolves fine) -
+    **the library's real first failure is the `getTeamForPlayer` below**; "reading it off the outer
+    class and throwing right there" is the **downstream consumer mod** `astral_dice`'s shape.
   - the real server-side accessor is `TeamManager#getTeamForPlayerID(UUID)`; the `getTeamForPlayer(UUID)`
     / `getTeamForPlayer(Player)` the old code looked up **do not exist**;
   - the client side is `ClientTeamManager#getKnownPlayer(UUID)` + `KnownClientPlayer#teamId()`
@@ -80,6 +86,13 @@
   (`color` really is `color`), so they are unaffected and were left untouched. This is a **platform-required
   difference**, documented in the `AstralRarities` source comments.
 
+
+- **Documentation correction (no bytecode change)**: corrected the inaccurate description of the old code's
+  *first* failure point in the `1.0.6 / 1.0.5-alpha.2` section - the library's old code went through
+  `api.getClass()` (the implementation class, which resolves nested-interface methods), so its real first
+  failure was `getTeamForPlayer`; "reading the accessor off the outer class and throwing right there" is
+  the downstream consumer mod's shape. The `EventTargetCollector` class javadoc was corrected in step.
+  => Comments / docs only: **no version bump, no re-publish** (the published bytecode is unchanged).
 ## Unreleased
 
 > The entries below are **build-script / documentation** changes with no effect on jar contents, so
