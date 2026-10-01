@@ -114,7 +114,9 @@ tasks.withType(JavaCompile).configureEach {
 // （独立 jar 版本更旧时反而会**盖掉**内嵌版 ⇒ NoSuchMethodError / NoClassDefFoundError）。
 // ⇒ 已移除该任务，连同只服务于它的 `packModsDir` / `packPushBranches` / `forcePackPush` /
 //   `dotGitEntry` / `jarArchiveProvider`；`build` 不再读写任何整合包目录。
-// 需要单独放一份库 jar 做 A/B 时请从本仓 Release 手动取用，**不要**恢复自动推送。
+// ⚠️ 2026-10-01 政策：**本仓不提供任何 jar 下载**（Release 只含源码归档，CI 也不上传构建产物）
+// ⇒ 需要独立 jar 做 A/B 时请自行从源码构建（`gradlew build`，产物在 <平台>/build/libs/），
+//   **不要**恢复自动推送，也不要试图从本仓下载。
 
 idea {
     module {
