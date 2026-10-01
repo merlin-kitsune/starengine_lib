@@ -3,7 +3,7 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
-## Unreleased (2.0.0-SNAPSHOT.4)
+## Unreleased (2.0.0-SNAPSHOT.5)
 
 ### Combat
 
@@ -21,6 +21,22 @@
   - Note: it also avoids `Mob#isAggressive()`: its meaning is mob-specific -- `Panda` overrides it to mean
     the "aggressive gene" (a permanent personality, not current anger), while `Llama` does not override it
     (always `false`).
+
+### Engineering
+
+- **This repository no longer distributes any jar - source code only** (user ruling 2026-10-01). The CI step
+  `Upload StarEngine Lib JARs` is gone entirely: the build still runs (jars are produced, but they stay on the
+  runner), the Release step now attaches **no assets at all** and keeps only GitHub's automatically generated
+  source archives, and it gained a **self-healing cleanup** - any `*.jar` asset found on that Release is removed
+  via `gh release delete-asset` (idempotent when re-run). The existing stock was purged too: all **12** remote
+  `starengine_lib-jars` artifacts were deleted (the Release side was cross-checked tag by tag and held **0**).
+  The reason is the same as the `pushToPack` item above: an independently downloaded copy of the library silently
+  shadows the copy the consumer embeds, and the resulting failure is very hard to diagnose.
+  ⚠️ **Nothing changes for the consumer** - it still pins `starengine_lib_version` and embeds the library via JarJar.
+- Updated `README_ZH` / `README` accordingly (§4.3 no longer suggests fetching a jar from this repository's
+  Releases; the §4.4 table now reads "nothing is uploaded / Release assets: none", plus a policy note at the top of
+  that section; the CI JDK count was corrected from "dual (21 + 17)" to the three toolchains 21 / 17 / 25).
+  Historical "Release asset" mentions in older CHANGELOG sections are **kept** as a record of the facts then.
 
 ## Unreleased (2.0.0-SNAPSHOT.2)
 
