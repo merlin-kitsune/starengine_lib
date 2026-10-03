@@ -3,6 +3,37 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
+## 1.0.8 / 1.0.6-alpha.3
+
+> This change lands in a **platform client-rendering class** (`client/ActionBarManager`, one copy per platform,
+> not in `common`) plus a constant default in `common` => all four artifacts are renumbered together:
+> the three platform lines go `1.0.7` -> **`1.0.8`**; the fabric subproject goes
+> `1.0.6-alpha.2` -> **`1.0.6-alpha.3`**.
+
+> NOTE (for future readers): this version fixes a **rendering-position defect** (the actionbar text overlapping
+> the hotbar item-name toast) plus a **default-value adjustment** (fade 20 -> 10 ticks). No public method
+> signature, visibility or semantic shape of `ActionBarManager` changed (only the internal draw coordinate and
+> a constant default) => it falls under the 1.x contract's explicitly allowed "behaviour fix that does not
+> change the contract", published at the patch position.
+
+### Changes
+
+- `client/ActionBarManager#render`: text baseline `guiHeight()-58` -> **`guiHeight()-68`** (all four platforms).
+  Vanilla draws the hotbar item-name toast at `guiHeight()-max(yShift, 59)` and the vanilla actionbar at `68`;
+  the previous **58 sat only 1px away from the item name**, so the two overlapped on the same line whenever
+  both were shown (reported 2026-10-03: "with target-selector effect cards, the ActionBar text sometimes
+  overlaps the item-name toast"). Restoring the vanilla actionbar position keeps at least 9px between them.
+- `GameplayConstants#ACTIONBAR_FADE_TICKS` default: **20 -> 10** (1s -> 0.5s). This pairs with the consumer
+  moving both actionbar options **out of the config file** (no longer player-adjustable), making the field a
+  fixed constant in practice.
+- Corrected the `ActionBarManager` class-header comment: it claimed the duration cap "defaults to 5 seconds"
+  while the actual value is 60 ticks = 3 seconds.
+- Three-platform `lib_version` / `mod_version`: `1.0.7` -> **`1.0.8`**.
+- fabric subproject `lib_version` / `mod_version`: `1.0.6-alpha.2` -> **`1.0.6-alpha.3`**.
+- The consumer `astral_dice` pins/ranges follow this version (three lines `1.0.7` / `[1.0.7,2.0)` ->
+  `1.0.8` / `[1.0.8,2.0)`; fabric line `1.0.6-alpha.2` / `>=1.0.6-alpha.2 <2.0` ->
+  `1.0.6-alpha.3` / `>=1.0.6-alpha.3 <2.0`).
+
 ## 1.0.7 / 1.0.6-alpha.2
 
 > This change lands in the `common` sources shared by **all four platforms** => all four artifacts must be

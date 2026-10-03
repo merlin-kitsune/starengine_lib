@@ -3,6 +3,31 @@
 > 本文件仅收录中文更新日志；英文版见 [`CHANGELOG.md`](CHANGELOG.md)。
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 
+## 1.0.8 / 1.0.6-alpha.3
+
+> 本次改动落在一处**平台客户端渲染类**（`client/ActionBarManager`，四平台各一份，不在 `common`）
+> 与 `common` 的一个常量默认值 ⇒ 四个 artifact 同批换号：三平台 `1.0.7` → **`1.0.8`**；
+> fabric 子项目 `1.0.6-alpha.2` → **`1.0.6-alpha.3`**。
+
+> ⚠️ **定性说明（供后人判断）**：本版修的是**渲染位置缺陷**（actionbar 文本与 hotbar 物品名提示重叠），
+> 外加一个**默认值调整**（淡出 20 → 10 tick）。`ActionBarManager` 的 public 方法签名 / 可见性 / 语义形状
+> **全未变**（只改了内部绘制坐标与常量默认值）⇒ 属 1.x 契约明文允许的「不改变契约的行为修正」，按补丁位发布。
+
+### 变更
+
+- `client/ActionBarManager#render`：文本基线 `guiHeight()-58` → **`guiHeight()-68`**（四平台同批）。
+  原版 hotbar 物品名提示固定在 `guiHeight()-max(yShift, 59)`，原版 actionbar 默认在 `68`；本类此前的
+  **58 与物品名仅差 1px** ⇒ 两者同时出现时同一行互相压盖（2026-10-03 用户实报「带目标选择器的效果牌，
+  ActionBar 文本有时会和物品名称提示重叠」）。改回原版 actionbar 位置后，二者至少相隔 9px。
+- `GameplayConstants#ACTIONBAR_FADE_TICKS` 默认值：**20 → 10**（1 秒 → 0.5 秒）。配合消费方把
+  actionbar 两项**移出配置文件**（不再开放玩家调整），该字段改为「固定常量」语义。
+- `ActionBarManager` 类头注释订正：原写「总时长上限…默认 5 秒」与实际（60 tick = 3 秒）不符，已改正。
+- 三平台 `lib_version` / `mod_version`：`1.0.7` → **`1.0.8`**。
+- fabric 子项目 `lib_version` / `mod_version`：`1.0.6-alpha.2` → **`1.0.6-alpha.3`**。
+- 消费方 `astral_dice` 四条线的引脚与区间随本版同步（三线 `1.0.7` / `[1.0.7,2.0)` →
+  `1.0.8` / `[1.0.8,2.0)`；fabric 线 `1.0.6-alpha.2` / `>=1.0.6-alpha.2 <2.0` →
+  `1.0.6-alpha.3` / `>=1.0.6-alpha.3 <2.0`）。
+
 ## 1.0.7 / 1.0.6-alpha.2
 
 > 本次改动落在**四平台共用的 `common` 源码** ⇒ 四个 artifact 必须同批换号：三平台 `1.0.6` → **`1.0.7`**；
