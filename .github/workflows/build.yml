@@ -50,10 +50,11 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build with Gradle (all platforms)
-        # 产物清单(main 分支为三平台;fabric-1.20.1 分支另有 fabric 子项目):
+        # 产物清单(**2026-10-03 起单分支 `main` 即含四平台** —— 原独立分支 `fabric-1.20.1` 已并入 main 并删除):
         #           neoforge-1.21.1/build/libs  普通 jar(Mojmap,无需重映射)
         #           forge-1.20.1/build/libs     reobfJar(生产 SRG jar)
         #           neoforge-26.1.2/build/libs  普通 jar(Mojmap,无需重映射)
+        #           fabric-1.20.1/build/libs    普通 jar(intermediary,无需重映射)
         # 说明:各平台 build **只产出 jar**,不触碰任何整合包目录
         # (2026-09-24 移除了 pushToPack —— 本库现由消费方 astral_dice 以 JarJar 内嵌携带)。
         # ⚠️ 2026-10-01 政策:这些 jar **只作为构建产物留在 runner 上** —— 既不上传 artifact,
