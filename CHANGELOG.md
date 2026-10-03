@@ -3,6 +3,31 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
+## 1.0.10 / 1.0.6-alpha.5
+
+> Purely additive: `common`'s `target/TargetType` gains one enum constant and `target/SelectorTargets`
+> routes it - all four artifacts are renumbered together: the three platform lines go `1.0.9` ->
+> **`1.0.10`**; the fabric subproject goes `1.0.6-alpha.4` -> **`1.0.6-alpha.5`**.
+> NOTE on classification: no existing public member is added/renamed/removed, and every existing
+> branch plus `HostileTargets.isHostile` keeps **exactly** its previous semantics => this is an allowed
+> "addition" under the 1.x contract and ships as a patch release; no major bump is required.
+
+### Changes
+
+- `target/TargetType`: new constant `NON_HOSTILE` appended **at the end** (all existing ordinals
+  unchanged, keeping the consumer's `TargetType.values()[ordinal]` wire encoding compatible):
+  the **non-hostile target**, used by the target selectors of the healing / utility effect cards that
+  may be cast on friendly or neutral creatures (Berserk / Luxury Feast / Express Delivery).
+  - Its base `matches` only excludes the selector itself (= any living entity); the **actual hostile
+    filter lives in `SelectorTargets`** (the single decision point shared by the client crosshair, the
+    client radius highlight and the server-side confirm), so the enum implementation alone does **not**
+    define the selectable set - same structure as `ENEMY` / `CREATURE`.
+- `target/SelectorTargets` routes `NON_HOSTILE` to `!HostileTargets.isHostile(target)`: players, tamed
+  pets, passive livestock, calm neutral mobs and villagers are selectable, while **hostile mobs are
+  never selectable**.
+  NOTE: this is the **opposite direction** from the damage-card `CREATURE` family (which includes
+  untamed tamables and **excludes** villagers) - the two must not be mixed.
+
 ## 1.0.9 / 1.0.6-alpha.4
 
 > Purely additive: `common` gains one predicate class and two enum constants, and all four artifacts are

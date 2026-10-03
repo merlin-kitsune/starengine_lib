@@ -1,6 +1,7 @@
 package com.merlinkitsune.starenginelib.target;
 
 import com.merlinkitsune.starenginelib.combat.CreatureTargets;
+import com.merlinkitsune.starenginelib.combat.HostileTargets;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
@@ -71,6 +72,28 @@ public enum TargetType {
                 return selector.getTeam() == null || selector.getTeam() != other.getTeam();
             }
             return false;
+        }
+    },
+    /**
+     * 非敌方目标（**治疗 / 功能效果牌专用**；2026-10-03 用户裁决）。
+     *
+     * <p>口径 = 「**不属于敌方判定**的活体」（玩家 ∪ 已驯服宠物 ∪ 被动家畜 ∪ 平静的中立生物 ∪
+     * 村民…），**敌对生物一律不可选**。判据委托全局唯一入口 {@link HostileTargets#isHostile}
+     * （经 {@link SelectorTargets} 路由，避免与库的「仅敌对生物」基础语义漂移）。
+     *
+     * <p>⚠️ **本类型不得用于伤害效果牌**（那一路用 {@link #CREATURE} / {@link #CREATURE_OR_RIVAL}）——
+     * 本类型是「可对**友方或中立**生物施放的治疗 / 增益牌」专用（狂暴 / 奢华大餐 / 加急加快）。
+     * 两者的方向**相反**：本类型**排除**敌对生物、村民**可选**；伤害牌那条**包含**未驯服的可驯服生物、
+     * **排除**村民。混用会让「治疗牌打怪 / 伤害牌喂村民」。
+     *
+     * <p>⚠️ 基础 {@link #matches} 只排除选择者自身（= 任意活体）；**真正的敌方过滤器在
+     * {@link SelectorTargets#matches}**（客户端准星 / 客户端半径高亮 / 服务端确认三处共用）——
+     * 单看本处实现**不能**得出「可选集合」。
+     */
+    NON_HOSTILE {
+        @Override
+        public boolean matches(Player selector, LivingEntity target) {
+            return target != selector;
         }
     };
 

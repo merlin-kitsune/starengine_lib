@@ -29,6 +29,8 @@ import net.minecraft.world.entity.player.Player;
  *       （效果牌专用：敌对 ∪ 中立（宠物除外）∪ 未驯服的可驯服生物；**不含玩家**）；</li>
  *   <li>{@link TargetType#CREATURE_OR_RIVAL} → {@code CreatureTargets.isCreatureTarget(target)}
  *       ∪ 库 {@code matches} 的「非队友玩家」分支（符卡-祸专用）；</li>
+ *   <li>{@link TargetType#NON_HOSTILE} → {@code !HostileTargets.isHostile(target)}
+ *       （治疗 / 功能效果牌专用：玩家 ∪ 已驯服宠物 ∪ 被动家畜 ∪ 平静的中立生物；**敌对生物不可选**）；</li>
  *   <li>{@link TargetType#PLAYER} / {@link TargetType#LIVING} → 原样交给库的 {@code matches}。</li>
  * </ul>
  *
@@ -60,6 +62,11 @@ public final class SelectorTargets {
         }
         if (type == TargetType.CREATURE_OR_RIVAL) {
             return CreatureTargets.isCreatureTarget(target) || type.matches(selector, target);
+        }
+        // 治疗 / 功能效果牌专用族(2026-10-03 用户裁决):非敌方判定 —— 敌对生物一律不可选。
+        // 与上面的效果牌族(伤害向)方向相反:这里村民可选、不含未驯服的可驯服生物中「算敌对」的那批。
+        if (type == TargetType.NON_HOSTILE) {
+            return !HostileTargets.isHostile(target);
         }
         return type.matches(selector, target);
     }

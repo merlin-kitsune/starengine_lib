@@ -3,6 +3,27 @@
 > 本文件仅收录中文更新日志；英文版见 [`CHANGELOG.md`](CHANGELOG.md)。
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 
+## 1.0.10 / 1.0.6-alpha.5
+
+> 本次是**纯新增**：`common` 的 `target/TargetType` 追加一个枚举常量，`target/SelectorTargets` 为它接上路由
+> —— 四平台同批换号：三平台 `lib_version` / `mod_version` `1.0.9` → **`1.0.10`**；
+> fabric 子项目 `1.0.6-alpha.4` → **`1.0.6-alpha.5`**。
+> ⚠️ **定性说明**：未新增 / 改名 / 删除任何既有 public 成员，既有分支行为与
+> `HostileTargets.isHostile` 的语义**逐字未变** ⇒ 属 1.x 契约允许的「**新增**」，按补丁位发布，
+> 不需要升主版本。
+
+### 变更
+
+- `target/TargetType` 新增常量 `NON_HOSTILE`（**追加在末尾 ⇒ 既有 ordinal 全部不变**，与消费方
+  `TargetType.values()[ordinal]` 的网络编码兼容）：**非敌方目标**，供「可对友方或中立生物施放的
+  治疗 / 功能效果牌」（狂暴 / 奢华大餐 / 加急加快）的目标选择器使用。
+  - 其基础 `matches` 只排除选择者自身（= 任意活体）；**真正的敌方过滤器落在 `SelectorTargets`**
+    （客户端准星 / 客户端半径高亮 / 服务端确认三处共用的唯一判定点），故单看枚举实现**不能**得出
+    「可选集合」—— 与 `ENEMY` / `CREATURE` 同一结构。
+- `target/SelectorTargets` 为 `NON_HOSTILE` 接上路由：`!HostileTargets.isHostile(target)`
+  ⇒ 玩家 / 已驯服宠物 / 被动家畜 / 平静的中立生物 / 村民可选，**敌对生物一律不可选**。
+  ⚠️ 与伤害效果牌的 `CREATURE` 系**方向相反**（那条含未驯服的可驯服生物、**排除**村民），两者不得混用。
+
 ## 1.0.9 / 1.0.6-alpha.4
 
 > 本次是**纯新增**：`common` 新增一个判定类与两个枚举常量，四平台同批换号 ——
