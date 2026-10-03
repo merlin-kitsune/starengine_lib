@@ -3,7 +3,7 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
-## 1.0.11 / 1.0.6-alpha.6
+## 1.0.11
 
 > Scope fix (second ruling of the same day, 2026-10-03): the predicate of `TargetType.NON_HOSTILE`
 > (healing / utility effect cards) is changed from "**not a hostile target**"
@@ -12,6 +12,14 @@
 > the vanilla `Enemy` marker) => neutral mobs are selectable again. All four artifacts are renumbered
 > together: the three platform lines go `1.0.10` -> **`1.0.11`**, the fabric subproject goes
 > `1.0.6-alpha.5` -> **`1.0.6-alpha.6`**.
+> **Version-scheme change (2026-10-03 user ruling, "make the fabric side match the main line")**:
+> the fabric subproject's version is aligned from `1.0.6-alpha.6` to **`1.0.11`**, identical to the
+> three platform lines => from this version on **all four artifacts share one number**; the `-alpha.N`
+> independent-increment scheme that this subproject had used since 2026-09-29 is **retired**
+> (`mod_version` still carries the platform suffix `+fabric_1.20.1`).
+> This change is a **pure publish-coordinate change with no source modification** - the fabric
+> subproject compiles the very same `common` as the three platform lines at this version, so no
+> contract change is involved (the `1.x` "addition + contract-preserving fix" reading still applies).
 > NOTE: `1.0.10` was superseded **the same day it was built** (it was never pushed to a remote and
 > never distributed - this library ships no jars at all), so its section is kept here for history.
 > This version **adds** one public static method and does not remove or alter any existing member or
