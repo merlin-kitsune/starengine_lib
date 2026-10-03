@@ -3,6 +3,29 @@
 > 本文件仅收录中文更新日志；英文版见 [`CHANGELOG.md`](CHANGELOG.md)。
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 
+## 1.0.9 / 1.0.6-alpha.4
+
+> 本次是**纯新增**：`common` 新增一个判定类与两个枚举常量，四平台同批换号 ——
+> 三平台 `lib_version` / `mod_version` `1.0.8` → **`1.0.9`**；
+> fabric 子项目 `1.0.6-alpha.3` → **`1.0.6-alpha.4`**。
+> ⚠️ **定性说明**：既有 `HostileTargets.isHostile` 的语义**逐字未变**（立牌选择器、法伤闸门、飞星、
+> 派对关系等调用点行为不变）⇒ 属 1.x 契约允许的「**新增**」，按补丁位发布，不需要升主版本。
+
+### 变更
+
+- 新增 `combat/CreatureTargets`：**效果牌专用**的「可选中生物」判定入口。
+  口径 = `HostileTargets.isHostile(e) ∪ 未驯服的可驯服生物`，并显式排除 `Npc`（村民 / 流浪商人）。
+  - `isUntamedTamable`：未驯服的 `TamableAnimal`（狼 / 猫 / 鹦鹉），或无主的 `OwnableEntity`
+    （马 / 驴 / 骡 / 骆驼 / 羊驼）。已驯服宠物与已被认领的坐骑**不计入**。
+  - 判据只用三平台签名一致的接口（`TamableAnimal#isTame` / `OwnableEntity#getOwner`）；
+    ⚠️ **不用** `getOwnerUUID()`（26.1.2 已删）、**不用**任何类名 / 包路径（26.1.2 把
+    `animal/horse/**` 改名为 `animal/equine/**`）。
+  - 取证：`OwnableEntity` 三平台实现者**只有** `AbstractHorse` 与 `TamableAnimal`；
+    `AbstractVillager` 两者都不是；`Npc` 三平台同 FQN 且只有 `AbstractVillager` 实现。
+- `target/TargetType` 新增两个常量（**追加在末尾 ⇒ 既有 ordinal 不变**，
+  与消费方的 `TargetType.values()[ordinal]` 网络编码兼容）：`CREATURE` 与 `CREATURE_OR_RIVAL`。
+- `target/SelectorTargets` 为这两个新类型接上路由（`CREATURE_OR_RIVAL` 额外含「非队友玩家」分支）。
+
 ## 1.0.8 / 1.0.6-alpha.3
 
 > 本次改动落在一处**平台客户端渲染类**（`client/ActionBarManager`，四平台各一份，不在 `common`）

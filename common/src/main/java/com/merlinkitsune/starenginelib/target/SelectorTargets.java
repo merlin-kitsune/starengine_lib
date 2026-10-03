@@ -1,5 +1,6 @@
 package com.merlinkitsune.starenginelib.target;
 
+import com.merlinkitsune.starenginelib.combat.CreatureTargets;
 import com.merlinkitsune.starenginelib.combat.HostileTargets;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -24,6 +25,10 @@ import net.minecraft.world.entity.player.Player;
  *       （口径见 {@link HostileTargets} 类注释；**不含玩家**，与库的「仅敌对生物」一致）；</li>
  *   <li>{@link TargetType#ENEMY_OR_RIVAL} → {@code HostileTargets.isHostile(target)}
  *       ∪ 库 {@code matches} 的「非队友玩家」分支；</li>
+ *   <li>{@link TargetType#CREATURE} → {@code CreatureTargets.isCreatureTarget(target)}
+ *       （效果牌专用：敌对 ∪ 中立（宠物除外）∪ 未驯服的可驯服生物；**不含玩家**）；</li>
+ *   <li>{@link TargetType#CREATURE_OR_RIVAL} → {@code CreatureTargets.isCreatureTarget(target)}
+ *       ∪ 库 {@code matches} 的「非队友玩家」分支（符卡-祸专用）；</li>
  *   <li>{@link TargetType#PLAYER} / {@link TargetType#LIVING} → 原样交给库的 {@code matches}。</li>
  * </ul>
  *
@@ -48,6 +53,13 @@ public final class SelectorTargets {
         }
         if (type == TargetType.ENEMY_OR_RIVAL) {
             return HostileTargets.isHostile(target) || type.matches(selector, target);
+        }
+        // 效果牌专用族(2026-10-03 用户裁决):敌对 ∪ 未驯服的可驯服生物;口径见 CreatureTargets。
+        if (type == TargetType.CREATURE) {
+            return CreatureTargets.isCreatureTarget(target);
+        }
+        if (type == TargetType.CREATURE_OR_RIVAL) {
+            return CreatureTargets.isCreatureTarget(target) || type.matches(selector, target);
         }
         return type.matches(selector, target);
     }

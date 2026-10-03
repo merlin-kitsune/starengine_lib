@@ -3,6 +3,35 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
+## 1.0.9 / 1.0.6-alpha.4
+
+> Purely additive: `common` gains one predicate class and two enum constants, and all four artifacts are
+> renumbered together - the three platform lines go `1.0.8` -> **`1.0.9`**; the fabric subproject goes
+> `1.0.6-alpha.3` -> **`1.0.6-alpha.4`**.
+> NOTE on classification: `HostileTargets.isHostile` keeps **exactly** its previous semantics (sign
+> selectors, the spell-damage gate, star targets, party relations are unaffected) => this is an allowed
+> "addition" under the 1.x contract and ships as a patch release; no major bump is required.
+
+### Changes
+
+- Added `combat/CreatureTargets`: the **effect-card-only** "selectable creature" entry point.
+  Its scope is `HostileTargets.isHostile(e) | untamed tamable`, explicitly excluding `Npc`
+  (villagers / wandering traders).
+  - `isUntamedTamable`: an untamed `TamableAnimal` (wolf / cat / parrot) or an unowned `OwnableEntity`
+    (horse / donkey / mule / camel / llama). Tamed pets and owned mounts are **not** included.
+  - Only interfaces whose signatures agree across all three platforms are used
+    (`TamableAnimal#isTame`, `OwnableEntity#getOwner`); `getOwnerUUID()` is **not** used (removed in
+    26.1.2) and no class/package names are hardcoded (26.1.2 renamed `animal/horse/**` to
+    `animal/equine/**`).
+  - Evidence: the only `OwnableEntity` implementors on all three platforms are `AbstractHorse` and
+    `TamableAnimal`; `AbstractVillager` is neither; `Npc` has the same FQN on all three and is
+    implemented only by `AbstractVillager`.
+- `target/TargetType`: two new constants appended **at the end** (existing ordinals unchanged, keeping
+  the consumer's `TargetType.values()[ordinal]` wire encoding compatible): `CREATURE` and
+  `CREATURE_OR_RIVAL`.
+- `target/SelectorTargets`: routes the two new types (`CREATURE_OR_RIVAL` additionally covers
+  "non-teammate players").
+
 ## 1.0.8 / 1.0.6-alpha.3
 
 > This change lands in a **platform client-rendering class** (`client/ActionBarManager`, one copy per platform,

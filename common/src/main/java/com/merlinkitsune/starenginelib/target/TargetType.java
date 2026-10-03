@@ -1,5 +1,6 @@
 package com.merlinkitsune.starenginelib.target;
 
+import com.merlinkitsune.starenginelib.combat.CreatureTargets;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
@@ -43,6 +44,30 @@ public enum TargetType {
             if (target instanceof Enemy) return true;
             if (target instanceof Player other && other != selector) {
                 // 选择者无队伍 → 所有玩家可选;有队伍 → 仅非队友玩家可选
+                return selector.getTeam() == null || selector.getTeam() != other.getTeam();
+            }
+            return false;
+        }
+    },
+    /**
+     * 敌对目标 ∪ 未驯服的可驯服生物（**效果牌专用**；2026-10-03 用户裁决）。
+     *
+     * <p>口径见 {@link CreatureTargets}：比 {@link #ENEMY} 多出「未驯服的狼 / 猫 / 鹦鹉」与
+     * 「无主的马 / 驴 / 骡 / 骆驼 / 羊驼」；**不含玩家**；已驯服宠物与村民 / 流浪商人不在内。
+     * ⚠️ 立牌选择器**不用**本类型（仍走 {@link #ENEMY} / {@link #ENEMY_OR_RIVAL}）。
+     */
+    CREATURE {
+        @Override
+        public boolean matches(Player selector, LivingEntity target) {
+            return CreatureTargets.isCreatureTarget(target);
+        }
+    },
+    /** {@link #CREATURE} ∪ 非队友玩家（**符卡-祸专用**）。 */
+    CREATURE_OR_RIVAL {
+        @Override
+        public boolean matches(Player selector, LivingEntity target) {
+            if (CreatureTargets.isCreatureTarget(target)) return true;
+            if (target instanceof Player other && other != selector) {
                 return selector.getTeam() == null || selector.getTeam() != other.getTeam();
             }
             return false;
