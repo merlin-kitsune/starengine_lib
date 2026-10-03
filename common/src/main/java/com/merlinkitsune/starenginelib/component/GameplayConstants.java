@@ -71,15 +71,18 @@ public final class GameplayConstants {
     // 注:忍者立牌的旧「出牌数银行」常量 KOMACHI_EXTRA_PLAYS_CAP 已于 1.0.0-SNAPSHOT.5 按期删除
     //     (主线已把忍者主动改写为「当前出牌轮一次性 +1」并删除出牌银行,合并后消费方三线零引用)。
 
-    // actionbar 消息显示总时长上限(单位: tick,默认 3 秒;任何消息最多显示该时长)
+    // actionbar 消息显示总时长上限(单位: tick,固定 3 秒 = 60 tick;2026-10-03 起不再来自配置文件)
     public static int ACTIONBAR_DURATION_TICKS = 60;
-    // actionbar 消息最后淡出时长(单位: tick,默认 1 秒)
-    public static int ACTIONBAR_FADE_TICKS = 20;
+    // actionbar 消息最后淡出时长(单位: tick,默认 0.5 秒 = 10 tick)
+    // 2026-10-03 起为固定常量:消费方已把 actionbar 两项移出配置文件(不再开放玩家调整),值由消费方常量直接注入
+    public static int ACTIONBAR_FADE_TICKS = 10;
 
     // 骰神赐福持续时长(单位:秒,默认 60)
     public static int DICE_BLESSING_DURATION_SECONDS = 60;
-    // 诅咒之剑:骰神赐福期间每击杀 1 个不少于 20 血的敌对目标攻击力 +1(每个赐福最多一次),最大增加上限(默认 16,最大 32)
-    public static int CURSED_SWORD_BONUS_MAX = 16;
+    // 诅咒之剑:骰神赐福期间每击杀 1 个不少于 20 血的敌对目标攻击力 +1(每个赐福最多一次),最大增加上限。
+    // 2026-10-02 用户裁决:上限 **16 → 32**(纯数值调整,不改任何 public 类型/方法/字段的签名、
+    //   可见性或语义形状 ⇒ 属 1.x 兼容契约允许的非破坏性修正;消费方读取处无需改代码)。
+    public static int CURSED_SWORD_BONUS_MAX = 32;
     // 目标选择器:可指定目标的最大距离(格)。固定常量 16,不写入配置文件(与其它玩法数值一致,服务端确认校验以本值为准)
     public static final int TARGET_SELECT_RADIUS = 16;
     // 骰神赐福持续时长(单位:tick,派生值)

@@ -3,6 +3,211 @@
 > 本文件仅收录中文更新日志；英文版见 [`CHANGELOG.md`](CHANGELOG.md)。
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 
+## 1.0.11
+
+> 口径修正（2026-10-03 同日二次裁决）：`TargetType.NON_HOSTILE`（治疗 / 功能效果牌专用）的判据由
+> 「**非敌方判定**」（`!HostileTargets.isHostile`，会把未驯服的狼 / 铁傀儡 / 北极熊 / 蜜蜂等中立生物
+> 一并排除）改为「**非敌对生物**」（`!HostileTargets.isHostileMob`，只看原版 `Enemy` 标记）
+> ⇒ 中立生物恢复可选。四平台同批换号：三平台 `1.0.10` → **`1.0.11`**，
+> fabric 子项目 `1.0.6-alpha.5` → **`1.0.6-alpha.6`**。
+> **版本号口径变更（2026-10-03 用户裁决「fabric 侧与主线版本号相同」）**：fabric 子项目的版本号由
+> `1.0.6-alpha.6` **对齐为与三平台完全相同的 `1.0.11`** ⇒ 自本版起**四个 artifact 同号**；该子项目
+> 自 2026-09-29 起沿用的 `-alpha.N` 独立递增口径**作废**（`mod_version` 仍带平台后缀 `+fabric_1.20.1`）。
+> 本次为**纯发布坐标变更、无源码改动** —— fabric 子项目与本版三平台是同一份 `common`，
+> 故不涉及任何契约变化（`1.x` 的「新增 + 不改变契约的修正」口径照旧适用）。
+> ⚠️ **定性说明**：`1.0.10` 发布后**当天即被本版取代**（该版从未推送远端、也从未对外分发 ——
+> 本库不分发任何 jar），故其小节在此保留作为历史。本次**新增**一个 public 静态方法、
+> 未删改任何既有成员或既有语义 ⇒ 属 1.x 契约允许的「新增 + 不改变契约的修正」。
+
+### 变更
+
+- 新增 `combat/HostileTargets#isHostileMob(Entity)`：**原版 `Enemy` 标志**的**唯一入口**（生物类别口径），
+  与既有的 `isHostile`（**战斗口径**：敌对生物 ∪ 中立生物(宠物除外) ∪ 会被激怒的可驯服动物 ∪
+  消费方额外声明的实体）**并列、不互替**；玩法代码不得再写裸的 `instanceof Enemy`。
+- `target/SelectorTargets`：`NON_HOSTILE` 的路由由 `!HostileTargets.isHostile(target)` 改为
+  `!HostileTargets.isHostileMob(target)` ⇒ 未驯服的狼 / 铁傀儡 / 北极熊 / 蜜蜂等中立生物、
+  已驯服宠物、村民、被动家畜、玩家**全部可选**，仅原版敌对生物不可选。
+  ⚠️ 伤害 / 攻击 / 立牌选敌等其它口径**逐字未变**。
+
+## 1.0.10 / 1.0.6-alpha.5
+
+> 本次是**纯新增**：`common` 的 `target/TargetType` 追加一个枚举常量，`target/SelectorTargets` 为它接上路由
+> —— 四平台同批换号：三平台 `lib_version` / `mod_version` `1.0.9` → **`1.0.10`**；
+> fabric 子项目 `1.0.6-alpha.4` → **`1.0.6-alpha.5`**。
+> ⚠️ **定性说明**：未新增 / 改名 / 删除任何既有 public 成员，既有分支行为与
+> `HostileTargets.isHostile` 的语义**逐字未变** ⇒ 属 1.x 契约允许的「**新增**」，按补丁位发布，
+> 不需要升主版本。
+
+### 变更
+
+- `target/TargetType` 新增常量 `NON_HOSTILE`（**追加在末尾 ⇒ 既有 ordinal 全部不变**，与消费方
+  `TargetType.values()[ordinal]` 的网络编码兼容）：**非敌方目标**，供「可对友方或中立生物施放的
+  治疗 / 功能效果牌」（狂暴 / 奢华大餐 / 加急加快）的目标选择器使用。
+  - 其基础 `matches` 只排除选择者自身（= 任意活体）；**真正的敌方过滤器落在 `SelectorTargets`**
+    （客户端准星 / 客户端半径高亮 / 服务端确认三处共用的唯一判定点），故单看枚举实现**不能**得出
+    「可选集合」—— 与 `ENEMY` / `CREATURE` 同一结构。
+- `target/SelectorTargets` 为 `NON_HOSTILE` 接上路由：`!HostileTargets.isHostile(target)`
+  ⇒ 玩家 / 已驯服宠物 / 被动家畜 / 平静的中立生物 / 村民可选，**敌对生物一律不可选**。
+  ⚠️ 与伤害效果牌的 `CREATURE` 系**方向相反**（那条含未驯服的可驯服生物、**排除**村民），两者不得混用。
+
+## 1.0.9 / 1.0.6-alpha.4
+
+> 本次是**纯新增**：`common` 新增一个判定类与两个枚举常量，四平台同批换号 ——
+> 三平台 `lib_version` / `mod_version` `1.0.8` → **`1.0.9`**；
+> fabric 子项目 `1.0.6-alpha.3` → **`1.0.6-alpha.4`**。
+> ⚠️ **定性说明**：既有 `HostileTargets.isHostile` 的语义**逐字未变**（立牌选择器、法伤闸门、飞星、
+> 派对关系等调用点行为不变）⇒ 属 1.x 契约允许的「**新增**」，按补丁位发布，不需要升主版本。
+
+### 变更
+
+- 新增 `combat/CreatureTargets`：**效果牌专用**的「可选中生物」判定入口。
+  口径 = `HostileTargets.isHostile(e) ∪ 未驯服的可驯服生物`，并显式排除 `Npc`（村民 / 流浪商人）。
+  - `isUntamedTamable`：未驯服的 `TamableAnimal`（狼 / 猫 / 鹦鹉），或无主的 `OwnableEntity`
+    （马 / 驴 / 骡 / 骆驼 / 羊驼）。已驯服宠物与已被认领的坐骑**不计入**。
+  - 判据只用三平台签名一致的接口（`TamableAnimal#isTame` / `OwnableEntity#getOwner`）；
+    ⚠️ **不用** `getOwnerUUID()`（26.1.2 已删）、**不用**任何类名 / 包路径（26.1.2 把
+    `animal/horse/**` 改名为 `animal/equine/**`）。
+  - 取证：`OwnableEntity` 三平台实现者**只有** `AbstractHorse` 与 `TamableAnimal`；
+    `AbstractVillager` 两者都不是；`Npc` 三平台同 FQN 且只有 `AbstractVillager` 实现。
+- `target/TargetType` 新增两个常量（**追加在末尾 ⇒ 既有 ordinal 不变**，
+  与消费方的 `TargetType.values()[ordinal]` 网络编码兼容）：`CREATURE` 与 `CREATURE_OR_RIVAL`。
+- `target/SelectorTargets` 为这两个新类型接上路由（`CREATURE_OR_RIVAL` 额外含「非队友玩家」分支）。
+
+## 1.0.8 / 1.0.6-alpha.3
+
+> 本次改动落在一处**平台客户端渲染类**（`client/ActionBarManager`，四平台各一份，不在 `common`）
+> 与 `common` 的一个常量默认值 ⇒ 四个 artifact 同批换号：三平台 `1.0.7` → **`1.0.8`**；
+> fabric 子项目 `1.0.6-alpha.2` → **`1.0.6-alpha.3`**。
+
+> ⚠️ **定性说明（供后人判断）**：本版修的是**渲染位置缺陷**（actionbar 文本与 hotbar 物品名提示重叠），
+> 外加一个**默认值调整**（淡出 20 → 10 tick）。`ActionBarManager` 的 public 方法签名 / 可见性 / 语义形状
+> **全未变**（只改了内部绘制坐标与常量默认值）⇒ 属 1.x 契约明文允许的「不改变契约的行为修正」，按补丁位发布。
+
+### 变更
+
+- `client/ActionBarManager#render`：文本基线 `guiHeight()-58` → **`guiHeight()-68`**（四平台同批）。
+  原版 hotbar 物品名提示固定在 `guiHeight()-max(yShift, 59)`，原版 actionbar 默认在 `68`；本类此前的
+  **58 与物品名仅差 1px** ⇒ 两者同时出现时同一行互相压盖（2026-10-03 用户实报「带目标选择器的效果牌，
+  ActionBar 文本有时会和物品名称提示重叠」）。改回原版 actionbar 位置后，二者至少相隔 9px。
+- `GameplayConstants#ACTIONBAR_FADE_TICKS` 默认值：**20 → 10**（1 秒 → 0.5 秒）。配合消费方把
+  actionbar 两项**移出配置文件**（不再开放玩家调整），该字段改为「固定常量」语义。
+- `ActionBarManager` 类头注释订正：原写「总时长上限…默认 5 秒」与实际（60 tick = 3 秒）不符，已改正。
+- 三平台 `lib_version` / `mod_version`：`1.0.7` → **`1.0.8`**。
+- fabric 子项目 `lib_version` / `mod_version`：`1.0.6-alpha.2` → **`1.0.6-alpha.3`**。
+- 消费方 `astral_dice` 四条线的引脚与区间随本版同步（三线 `1.0.7` / `[1.0.7,2.0)` →
+  `1.0.8` / `[1.0.8,2.0)`；fabric 线 `1.0.6-alpha.2` / `>=1.0.6-alpha.2 <2.0` →
+  `1.0.6-alpha.3` / `>=1.0.6-alpha.3 <2.0`）。
+
+## 1.0.7 / 1.0.6-alpha.2
+
+> 本次改动落在**四平台共用的 `common` 源码** ⇒ 四个 artifact 必须同批换号：三平台 `1.0.6` → **`1.0.7`**；
+> fabric 子项目 `1.0.6-alpha.1` → **`1.0.6-alpha.2`**（该子项目的**裸**号 `1.0.6` / `1.0.7` / `1.0.8` 已按
+> 2026-09-29 裁决「本地临时构建、不作对外号」，故**不复用**，按本线既有 `-alpha.N` scheme 继续递增）。
+
+> ⚠️ **定性说明（重要，供后人判断）**：本版改的是一个**玩家可感的平衡数值**（诅咒之剑累计加成上限翻倍），
+> 不只是「修 bug」。按 1.x 兼容契约「不得改变其可见性、签名或**既有语义**」的严格读法，这类改动**可能**
+> 被读作触碰语义；本库的判断是：该字段的**契约语义**（「诅咒之剑累计加成的上限」这一含义）**未变**，
+> 类型 / 名称 / 可见性 / 签名全未变，消费方**零改代码** ⇒ 属明文允许的「**不改变契约的行为修正**」，
+> 按补丁位发布。**沿用 `1.0.3` 的「玩法口径特例」先例**（2026-09-24 用户裁决：敌对目标口径重写本应升
+> 主版本，经用户裁决按补丁位发布）—— 在此**显式记录**该定性，避免后人把补丁位选择读成「契约失守」。
+
+### 变更
+
+- `component/GameplayConstants#CURSED_SWORD_BONUS_MAX`：**16 → 32**（2026-10-02 用户裁决）。
+  纯数值调整，不改任何 public 类型 / 方法 / 字段的签名、可见性或语义形状 ⇒ 属 1.x 兼容契约允许的
+  非破坏性修正；消费方**无需**改代码（读取方 `CursedSwordChipItem#onKill` 与 tooltip 渲染均直接读该字段）。
+- 三平台 `lib_version` / `mod_version`：`1.0.6` → **`1.0.7`**。
+- fabric 子项目 `lib_version` / `mod_version`：`1.0.6-alpha.1` → **`1.0.6-alpha.2`**。
+- 消费方 `astral_dice` 四条线的引脚与区间随本版同步（三线 `1.0.6` / `[1.0.6,2.0)` →
+  `1.0.7` / `[1.0.7,2.0)`；fabric 线 `1.0.6-alpha.1` / `>=1.0.6-alpha.1 <2.0` →
+  `1.0.6-alpha.2` / `>=1.0.6-alpha.2 <2.0`）。
+
+## 1.0.6-alpha.1
+
+> **仅 fabric 子项目换号，不涉及任何字节码改动。** 用户 2026-10-01 裁决：该子项目的**大版本号**与三平台
+> 同步为 `1.0.6`，仍保留 `-alpha.N` 预发布后缀 ⇒ `1.0.5-alpha.2` → **`1.0.6-alpha.1`**；内容与
+> `1.0.5-alpha.2` **完全相同**（即下一节的 FTB Teams / OPAC 反射修复，四平台共用同一份 `common`）。
+> ⚠️ 该子项目历史上那三个**裸**号 `1.0.6` / `1.0.7` / `1.0.8` 仍属「本地临时构建、不作对外号」，
+> 已从 `mavenLocal` 清出（移入隔离目录）；`1.0.6-alpha.1` 与它们**不是同一个字符串**，不构成复用。
+> 三平台（`1.0.6`）与 fabric 子项目（`1.0.6-alpha.1`）仍各自独立递增：前者是**发布号**，
+> 后者是**开发线的预发布号** —— 四条线**不共用**同一个版本字符串。
+
+### 变更
+
+- fabric 子项目 `lib_version` / `mod_version`：`1.0.5-alpha.2` → **`1.0.6-alpha.1`**（`+fabric_1.20.1` 后缀不变）。
+- 三平台版本号**不变**（仍为 `1.0.6`）。
+- 消费方 `astral_dice` 的 fabric 线引脚与区间同步为 `1.0.6-alpha.1` / `>=1.0.6-alpha.1 <2.0`。
+
+## 1.0.6 / 1.0.5-alpha.2
+
+> 本次改动落在**四平台共用的 `common` 源码** ⇒ 四个 artifact 必须同批换号：三平台 `1.0.5` → **`1.0.6`**；
+> fabric 子项目 `1.0.5-alpha.1` → **`1.0.5-alpha.2`**（该子项目的 `1.0.6` / `1.0.7` / `1.0.8` 已按 2026-09-29
+> 裁决作为「本地临时构建、不作对外号」，故**不复用**该号，按本线既有 scheme 继续递增 `-alpha.N`）。
+
+### 修复
+
+- **`event/EventTargetCollector` 的 FTB Teams / OPAC 两处反射**目标**根本不存在**（四平台共用代码）：
+  这两个后端此前**恒为未启用且毫无声响** —— 最外层 `catch (Exception ignored)` 把
+  `NoSuchMethodException` / `ClassNotFoundException` 全部吞掉。实测后果：装了 FTB Teams 或 OPAC 的玩家
+  被本库判为「没有任何队伍」⇒ 落进「全服皆友方」兜底 ⇒ **队友判定整体失效**。逐条更正
+  （每条都以上游实物的 `文件:行号` 为准，证据见源码类头「核验基准」）：
+  - FTB 的四个管理器访问器（`isManagerLoaded` / `getManager` / `isClientManagerLoaded` /
+    `getClientManager`）声明在**嵌套接口** `FTBTeamsAPI$API` 上，**不在**外层类上 ——
+    而 `Class#getMethod` **不会**跨到嵌套接口（外层类并未实现它）⇒ 本库**新实现**按实测结论
+    从嵌套接口解析（并保留「方法挪回外层类」的 fallback）。
+    ⚠️ **更正一处早先的失实描述**：旧代码**并不是**在外层类上取这个访问器（它走 `api.getClass()`，
+    那是 `api()` 返回的实现类、能解析成功）—— **本库的实际首个失败点是下面的 `getTeamForPlayer`**；
+    「在外层类上取 ⇒ 当场抛」是**下游消费方模组** `astral_dice` 的写法，两者失败点不同。
+  - 服务端取队伍的真实签名是 `TeamManager#getTeamForPlayerID(UUID)`；原代码查的
+    `getTeamForPlayer(UUID)` / `getTeamForPlayer(Player)` **一个都不存在**；
+  - 客户端取队伍是 `ClientTeamManager#getKnownPlayer(UUID)` + `KnownClientPlayer#teamId()`
+    （record 访问器，**没有 get 前缀**）+ `getTeamByID(UUID)`；原代码查的
+    `ClientTeamManager#getTeamForPlayer(Player)` 不存在；
+  - OPAC 的包路径真实为 **`xaero.pac.*`**（原代码查的 `dev.darkhax.opac.*` **整条不存在**）；
+    正确入口链 = `OpenPACServerAPI.get(MinecraftServer)` → `getPartyManager()` →
+    `IPartyManagerAPI#getPartyByMember(UUID)`；成员访问器是
+    `IServerPartyAPI#getOnlineMemberStream()`，原代码查的 `getPartyMembers()` 不存在。
+- **`hasAnyTeam` 的 FTB 判据由「Team 对象非空」改为 party / server team**
+  （`Team#isPartyTeam() || Team#isServerTeam()`）：FTB 给**每个玩家**都建了个人队伍 ⇒ 旧判据恒为真，
+  把「未组队 ⇒ 友方作用于全服」的兜底彻底堵死。
+- **解析失败不再静默**：新增 `public static String describeBackends()`，打出可断言的机器行
+  `AP_LIB_PARTY: back_ftb=… back_opac=… why_ftb=… why_opac=…`；「没装」（`ClassNotFoundException`）记 debug、
+  「装了但签名不符」记 warn —— 后者才是开发者需要关注的真问题。
+- ⚠️ **公共 API 只增不减**：`collectTeamPlayers` / `hasAnyTeam` 的签名与语义不变，仅**新增**
+  `describeBackends()` 与常量 `BACKEND_REPORT_PREFIX` ⇒ 符合 1.x「主版本不变禁止破坏性更新」的契约。
+
+### 说明
+
+- 客户端路径的三项访问器按**可选**解析：缺失只让客户端拿不到队伍信息，**不会**把服务端判定一起关掉
+  （这一点在实现上是硬要求 —— 否则一次客户端调用会因 `NoSuchMethod` 触发「后端停用」）。
+- OPAC 后端**仅服务端**（OPAC 的客户端 API 只暴露本地玩家自己的 party，无法查询任意两名玩家），与改动前同口径。
+- ⚠️ **未做**：OPAC 的<b>盟友队伍</b>未并入成员收集（本库只收「自己 party 的在线成员」）。
+  下游消费方 `astral_dice` 的 `PartyRelations#isSameTeam` 额外把盟友视为同队 —— 两者目前**有意不同**，
+  若要统一需另行裁决。
+
+## 1.0.5-alpha.1
+
+> 2026-09-29 用户裁决：本线（`fabric-1.20.1` 分支）为**开发线**，版本号起用 **`-alpha.x` 预发布后缀**，
+> 基线退回 **1.0.5**（`1.0.6` / `1.0.7` / `1.0.8` 系本地临时构建，不作为对外号）。
+
+### 修复
+
+- **`AstralRarities` 的映射相关反射**（fabric 子项目）：原用 `Rarity.class.getDeclaredField("color")` 与
+  `getDeclaredField("$VALUES")` **按字符串名**取原版字段。Fabric 的 dev(named) 与生产(intermediary) 是**两套映射**
+  （`Rarity` 在生产叫 `class_1814`，两字段分别叫 `field_8908` / `field_8905`）⇒ 本库的消费方在**正式环境 100% 启动崩**
+  （`NoSuchFieldException: color` → `ExceptionInInitializerError` → 入口点失败，玩家进不去游戏）。
+  改为**按类型 / 修饰符查找**（`lookupColorField` / `lookupValuesField`），两套映射下都成立。
+  其余反射（`Unsafe.theUnsafe`、`Enum.name` / `ordinal`）目标是 **JDK 成员**，不受重映射影响，保持不变。
+- static 块的 `catch (ReflectiveOperationException)` 放宽为 `catch (Throwable)` —— 新增的 `IllegalStateException`
+  需同样包成 `ExceptionInInitializerError`（否则失败形态退化为裸 RuntimeException）。
+- ⚠️ **只改 fabric 子项目**：另三平台生产用 Mojang 官方映射（`color` 本就是 `color`），不受影响、未改动。
+  这是**平台必需差异**，已在 `AstralRarities` 的源码注释里写明理由。
+
+
+- **文档更正（不改字节码）**：更正 `1.0.6 / 1.0.5-alpha.2` 一节里对「旧代码首个失败点」的失实描述 ——
+  本库旧代码走 `api.getClass()`（实现类，能解析嵌套接口方法），真正的首个失败点是 `getTeamForPlayer`；
+  「在外层类上取 ⇒ 当场抛」是下游消费方模组的写法。同步更正 `EventTargetCollector` 类 javadoc。
+  ⇒ 纯注释/文档改动，**不 bump 版本号、不重新发布**（已发布的 1.0.6 / 1.0.5-alpha.2 字节码不变）。
 ## 未发布
 
 > 下列为**构建脚本 / 文档**改动，不涉及 jar 内容 ⇒ **不 bump 版本号、不重新发布**；

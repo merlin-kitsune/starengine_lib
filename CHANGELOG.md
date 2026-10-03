@@ -3,6 +3,266 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
+## 1.0.11
+
+> Scope fix (second ruling of the same day, 2026-10-03): the predicate of `TargetType.NON_HOSTILE`
+> (healing / utility effect cards) is changed from "**not a hostile target**"
+> (`!HostileTargets.isHostile`, which also excluded neutral mobs such as untamed wolves / iron golems /
+> polar bears / bees) to "**non-hostile creature**" (`!HostileTargets.isHostileMob`, which only looks at
+> the vanilla `Enemy` marker) => neutral mobs are selectable again. All four artifacts are renumbered
+> together: the three platform lines go `1.0.10` -> **`1.0.11`**, the fabric subproject goes
+> `1.0.6-alpha.5` -> **`1.0.6-alpha.6`**.
+> **Version-scheme change (2026-10-03 user ruling, "make the fabric side match the main line")**:
+> the fabric subproject's version is aligned from `1.0.6-alpha.6` to **`1.0.11`**, identical to the
+> three platform lines => from this version on **all four artifacts share one number**; the `-alpha.N`
+> independent-increment scheme that this subproject had used since 2026-09-29 is **retired**
+> (`mod_version` still carries the platform suffix `+fabric_1.20.1`).
+> This change is a **pure publish-coordinate change with no source modification** - the fabric
+> subproject compiles the very same `common` as the three platform lines at this version, so no
+> contract change is involved (the `1.x` "addition + contract-preserving fix" reading still applies).
+> NOTE: `1.0.10` was superseded **the same day it was built** (it was never pushed to a remote and
+> never distributed - this library ships no jars at all), so its section is kept here for history.
+> This version **adds** one public static method and does not remove or alter any existing member or
+> behaviour => an allowed "addition plus contract-preserving fix" under the 1.x contract.
+
+### Changes
+
+- Added `combat/HostileTargets#isHostileMob(Entity)`: the **single entry point** for the vanilla
+  `Enemy` marker (the "creature category" reading), **parallel to and not interchangeable with**
+  `isHostile` (the "combat" reading: hostile mobs | neutral mobs except tamed pets | angerable tameable
+  animals | entities declared extra by consumers). Game code must no longer write a raw
+  `instanceof Enemy`.
+- `target/SelectorTargets`: the `NON_HOSTILE` route now uses `!HostileTargets.isHostileMob(target)`
+  instead of `!HostileTargets.isHostile(target)` => untamed wolves / iron golems / polar bears / bees
+  (neutral mobs), tamed pets, villagers, passive livestock and players are **all selectable**; only
+  vanilla hostile mobs are not. NOTE: every other scope (damage / attack / sign target picking) is
+  **unchanged, word for word**.
+
+## 1.0.10 / 1.0.6-alpha.5
+
+> Purely additive: `common`'s `target/TargetType` gains one enum constant and `target/SelectorTargets`
+> routes it - all four artifacts are renumbered together: the three platform lines go `1.0.9` ->
+> **`1.0.10`**; the fabric subproject goes `1.0.6-alpha.4` -> **`1.0.6-alpha.5`**.
+> NOTE on classification: no existing public member is added/renamed/removed, and every existing
+> branch plus `HostileTargets.isHostile` keeps **exactly** its previous semantics => this is an allowed
+> "addition" under the 1.x contract and ships as a patch release; no major bump is required.
+
+### Changes
+
+- `target/TargetType`: new constant `NON_HOSTILE` appended **at the end** (all existing ordinals
+  unchanged, keeping the consumer's `TargetType.values()[ordinal]` wire encoding compatible):
+  the **non-hostile target**, used by the target selectors of the healing / utility effect cards that
+  may be cast on friendly or neutral creatures (Berserk / Luxury Feast / Express Delivery).
+  - Its base `matches` only excludes the selector itself (= any living entity); the **actual hostile
+    filter lives in `SelectorTargets`** (the single decision point shared by the client crosshair, the
+    client radius highlight and the server-side confirm), so the enum implementation alone does **not**
+    define the selectable set - same structure as `ENEMY` / `CREATURE`.
+- `target/SelectorTargets` routes `NON_HOSTILE` to `!HostileTargets.isHostile(target)`: players, tamed
+  pets, passive livestock, calm neutral mobs and villagers are selectable, while **hostile mobs are
+  never selectable**.
+  NOTE: this is the **opposite direction** from the damage-card `CREATURE` family (which includes
+  untamed tamables and **excludes** villagers) - the two must not be mixed.
+
+## 1.0.9 / 1.0.6-alpha.4
+
+> Purely additive: `common` gains one predicate class and two enum constants, and all four artifacts are
+> renumbered together - the three platform lines go `1.0.8` -> **`1.0.9`**; the fabric subproject goes
+> `1.0.6-alpha.3` -> **`1.0.6-alpha.4`**.
+> NOTE on classification: `HostileTargets.isHostile` keeps **exactly** its previous semantics (sign
+> selectors, the spell-damage gate, star targets, party relations are unaffected) => this is an allowed
+> "addition" under the 1.x contract and ships as a patch release; no major bump is required.
+
+### Changes
+
+- Added `combat/CreatureTargets`: the **effect-card-only** "selectable creature" entry point.
+  Its scope is `HostileTargets.isHostile(e) | untamed tamable`, explicitly excluding `Npc`
+  (villagers / wandering traders).
+  - `isUntamedTamable`: an untamed `TamableAnimal` (wolf / cat / parrot) or an unowned `OwnableEntity`
+    (horse / donkey / mule / camel / llama). Tamed pets and owned mounts are **not** included.
+  - Only interfaces whose signatures agree across all three platforms are used
+    (`TamableAnimal#isTame`, `OwnableEntity#getOwner`); `getOwnerUUID()` is **not** used (removed in
+    26.1.2) and no class/package names are hardcoded (26.1.2 renamed `animal/horse/**` to
+    `animal/equine/**`).
+  - Evidence: the only `OwnableEntity` implementors on all three platforms are `AbstractHorse` and
+    `TamableAnimal`; `AbstractVillager` is neither; `Npc` has the same FQN on all three and is
+    implemented only by `AbstractVillager`.
+- `target/TargetType`: two new constants appended **at the end** (existing ordinals unchanged, keeping
+  the consumer's `TargetType.values()[ordinal]` wire encoding compatible): `CREATURE` and
+  `CREATURE_OR_RIVAL`.
+- `target/SelectorTargets`: routes the two new types (`CREATURE_OR_RIVAL` additionally covers
+  "non-teammate players").
+
+## 1.0.8 / 1.0.6-alpha.3
+
+> This change lands in a **platform client-rendering class** (`client/ActionBarManager`, one copy per platform,
+> not in `common`) plus a constant default in `common` => all four artifacts are renumbered together:
+> the three platform lines go `1.0.7` -> **`1.0.8`**; the fabric subproject goes
+> `1.0.6-alpha.2` -> **`1.0.6-alpha.3`**.
+
+> NOTE (for future readers): this version fixes a **rendering-position defect** (the actionbar text overlapping
+> the hotbar item-name toast) plus a **default-value adjustment** (fade 20 -> 10 ticks). No public method
+> signature, visibility or semantic shape of `ActionBarManager` changed (only the internal draw coordinate and
+> a constant default) => it falls under the 1.x contract's explicitly allowed "behaviour fix that does not
+> change the contract", published at the patch position.
+
+### Changes
+
+- `client/ActionBarManager#render`: text baseline `guiHeight()-58` -> **`guiHeight()-68`** (all four platforms).
+  Vanilla draws the hotbar item-name toast at `guiHeight()-max(yShift, 59)` and the vanilla actionbar at `68`;
+  the previous **58 sat only 1px away from the item name**, so the two overlapped on the same line whenever
+  both were shown (reported 2026-10-03: "with target-selector effect cards, the ActionBar text sometimes
+  overlaps the item-name toast"). Restoring the vanilla actionbar position keeps at least 9px between them.
+- `GameplayConstants#ACTIONBAR_FADE_TICKS` default: **20 -> 10** (1s -> 0.5s). This pairs with the consumer
+  moving both actionbar options **out of the config file** (no longer player-adjustable), making the field a
+  fixed constant in practice.
+- Corrected the `ActionBarManager` class-header comment: it claimed the duration cap "defaults to 5 seconds"
+  while the actual value is 60 ticks = 3 seconds.
+- Three-platform `lib_version` / `mod_version`: `1.0.7` -> **`1.0.8`**.
+- fabric subproject `lib_version` / `mod_version`: `1.0.6-alpha.2` -> **`1.0.6-alpha.3`**.
+- The consumer `astral_dice` pins/ranges follow this version (three lines `1.0.7` / `[1.0.7,2.0)` ->
+  `1.0.8` / `[1.0.8,2.0)`; fabric line `1.0.6-alpha.2` / `>=1.0.6-alpha.2 <2.0` ->
+  `1.0.6-alpha.3` / `>=1.0.6-alpha.3 <2.0`).
+
+## 1.0.7 / 1.0.6-alpha.2
+
+> This change lands in the `common` sources shared by **all four platforms** => all four artifacts must be
+> renumbered together: the three platform lines go `1.0.6` -> **`1.0.7`**; the fabric subproject goes
+> `1.0.6-alpha.1` -> **`1.0.6-alpha.2`** (the **bare** numbers `1.0.6` / `1.0.7` / `1.0.8` of that subproject were
+> ruled "local temporary builds, never public numbers" on 2026-09-29, so they are **not** reused — the line
+> keeps incrementing its own `-alpha.N` scheme).
+
+> Note on classification (important, for future readers): this release changes a **player-visible balance value**
+> (the Cursed Sword's stacking bonus cap is doubled), not merely a bug fix. Read strictly, the 1.x compatibility
+> contract's "must not change ... existing semantics" could be taken to cover it; the library's position is that the
+> field's **contract semantics** (the meaning "the cap on the Cursed Sword's stacking bonus") are **unchanged**, as are
+> its type / name / visibility / signature, and consumers need **zero code changes** => this falls under the explicitly
+> allowed "**behaviour fixes that do not change the contract**" and ships in a patch position. **This follows the
+> `1.0.3` precedent** ("gameplay-criteria special case", user ruling 2026-09-24: the hostile-target criteria rewrite
+> should have bumped the major version but was ruled into a patch release) - recorded explicitly here so that a patch
+> position is not later misread as a contract breach.
+
+### Changes
+
+- `component/GameplayConstants#CURSED_SWORD_BONUS_MAX`: **16 -> 32** (user ruling, 2026-10-02).
+  A pure value change that alters no public type / method / field signature, visibility or semantic shape, so it
+  is a non-breaking fix permitted by the 1.x compatibility contract; consumers need **no** code change (both
+  `CursedSwordChipItem#onKill` and the tooltip renderer read the field directly).
+- Three platform lines' `lib_version` / `mod_version`: `1.0.6` -> **`1.0.7`**.
+- fabric subproject's `lib_version` / `mod_version`: `1.0.6-alpha.1` -> **`1.0.6-alpha.2`**.
+- The consumer `astral_dice` moves its pins and ranges in the same batch (three lines `1.0.6` / `[1.0.6,2.0)`
+  -> `1.0.7` / `[1.0.7,2.0)`; fabric line `1.0.6-alpha.1` / `>=1.0.6-alpha.1 <2.0` ->
+  `1.0.6-alpha.2` / `>=1.0.6-alpha.2 <2.0`).
+
+## 1.0.6-alpha.1
+
+> **Renumbering of the fabric sub-project only - no bytecode change whatsoever.** Per the user's decision of
+> 2026-10-01, this sub-project's **major version** is brought in line with the other three platforms at
+> `1.0.6` while keeping the `-alpha.N` pre-release suffix, i.e. `1.0.5-alpha.2` -> **`1.0.6-alpha.1`**. Its
+> contents are **identical** to `1.0.5-alpha.2` (the FTB Teams / OPAC reflection fix in the next section - all
+> four platforms share the same `common` sources).
+> Note: the three **bare** numbers `1.0.6` / `1.0.7` / `1.0.8` this sub-project once produced are still
+> "local throwaway builds, never an official number" and have been purged from `mavenLocal` (moved to a
+> quarantine folder); `1.0.6-alpha.1` is **not the same string**, so this is not a reuse.
+> The three platforms (`1.0.6`) and the fabric sub-project (`1.0.6-alpha.1`) still advance independently: the
+> former is a **release number**, the latter a **pre-release number for the development line**.
+
+### Changes
+
+- fabric sub-project `lib_version` / `mod_version`: `1.0.5-alpha.2` -> **`1.0.6-alpha.1`** (the
+  `+fabric_1.20.1` suffix is unchanged).
+- The three platforms keep `1.0.6`.
+- The consumer `astral_dice`'s fabric line now pins `1.0.6-alpha.1` with the range `>=1.0.6-alpha.1 <2.0`.
+
+## 1.0.6 / 1.0.5-alpha.2
+
+> This change touches the **`common` source shared by all four platforms**, so all four artifacts are
+> re-versioned together: the three platforms go `1.0.5` -> **`1.0.6`**, and the fabric subproject goes
+> `1.0.5-alpha.1` -> **`1.0.5-alpha.2`** (`1.0.6` / `1.0.7` / `1.0.8` were ruled on 2026-09-29 to be
+> "local throwaway builds, not public numbers", so that number is **not** reused; this line keeps
+> incrementing its `-alpha.N` suffix).
+
+### Fixes
+
+- **Two reflection targets in `event/EventTargetCollector` did not exist at all** (shared `common` code):
+  both the FTB Teams and the OPAC backend were **permanently disabled and completely silent** - the
+  outermost `catch (Exception ignored)` swallowed every `NoSuchMethodException` / `ClassNotFoundException`.
+  Consequence: players running FTB Teams or OPAC were classified as "in no team at all", falling into the
+  "everyone on the server counts as friendly" fallback, so **team detection was entirely broken**.
+  Corrected item by item against the upstream artifacts (`file:line`; evidence in the class javadoc
+  "verification baseline"):
+  - FTB's four manager accessors (`isManagerLoaded` / `getManager` / `isClientManagerLoaded` /
+    `getClientManager`) are declared on the **nested interface** `FTBTeamsAPI$API`, **not** on the
+    outer class - and `Class#getMethod` does **not** reach into a nested interface the outer class
+    does not implement - so the **new** implementation resolves them from the nested interface
+    (keeping a "moved back to the outer class" fallback).
+    **Correction to an earlier inaccurate statement**: the old code did **not** read that accessor off
+    the outer class (it went through `api.getClass()`, the implementation class, which resolves fine) -
+    **the library's real first failure is the `getTeamForPlayer` below**; "reading it off the outer
+    class and throwing right there" is the **downstream consumer mod** `astral_dice`'s shape.
+  - the real server-side accessor is `TeamManager#getTeamForPlayerID(UUID)`; the `getTeamForPlayer(UUID)`
+    / `getTeamForPlayer(Player)` the old code looked up **do not exist**;
+  - the client side is `ClientTeamManager#getKnownPlayer(UUID)` + `KnownClientPlayer#teamId()`
+    (a **record** accessor, **no `get` prefix**) + `getTeamByID(UUID)`; the old code's
+    `ClientTeamManager#getTeamForPlayer(Player)` does not exist;
+  - OPAC's package path is really **`xaero.pac.*`** (the old code's `dev.darkhax.opac.*` simply does not
+    exist). Correct chain: `OpenPACServerAPI.get(MinecraftServer)` -> `getPartyManager()` ->
+    `IPartyManagerAPI#getPartyByMember(UUID)`; the member accessor is
+    `IServerPartyAPI#getOnlineMemberStream()` - the old code's `getPartyMembers()` does not exist.
+- **`hasAnyTeam` now uses party / server team for FTB instead of "a Team object exists"**
+  (`Team#isPartyTeam() || Team#isServerTeam()`): FTB gives **every** player a personal team, so the old
+  criterion was always true and completely disabled the "no team => affect everyone on the server"
+  fallback.
+- **Resolution failures are no longer silent**: added `public static String describeBackends()`, emitting
+  an assertable machine line `AP_LIB_PARTY: back_ftb=... back_opac=... why_ftb=... why_opac=...`.
+  "Not installed" (`ClassNotFoundException`) logs at debug; "installed but signatures do not match" logs
+  at warn - the latter is the real problem developers need to see.
+- **Public API only grows**: the signatures and semantics of `collectTeamPlayers` / `hasAnyTeam` are
+  unchanged; only `describeBackends()` and the constant `BACKEND_REPORT_PREFIX` were added, which the
+  1.x "no breaking changes within the same major version" contract allows.
+
+### Notes
+
+- The three client-path accessors are resolved as **optional**: their absence only means the client side
+  cannot read team info - it must **not** take the server-side detection down with it (that is a hard
+  requirement here: a single client call would otherwise hit `NoSuchMethodError` and trip "backend
+  disabled").
+- The OPAC backend stays **server-side only** (OPAC's client API only exposes the local player's own
+  party and cannot query two arbitrary players), same as before.
+- **Not done**: **ally parties** are not folded into member collection (this library only collects the
+  online members of the player's own party). The downstream consumer `astral_dice` additionally treats
+  OPAC allies as the same team in `PartyRelations#isSameTeam` - the two are **intentionally different**
+  for now; unifying them needs a separate ruling.
+
+## 1.0.5-alpha.1
+
+> Decided by the user on 2026-09-29: this line (branch `fabric-1.20.1`) is a **development line**, so version
+> numbers now carry an **`-alpha.x` pre-release suffix**, with the baseline rolled back to **1.0.5**
+> (`1.0.6` / `1.0.7` / `1.0.8` were local throwaway builds and are not used as public numbers).
+
+### Fixes
+
+- **Mapping-dependent reflection in `AstralRarities`** (fabric subproject): it reached vanilla fields **by string name**
+  via `Rarity.class.getDeclaredField("color")` and `getDeclaredField("$VALUES")`. Fabric uses **two different
+  mappings** for dev (named) and production (intermediary) — `Rarity` is `class_1814` in production, with the two
+  fields named `field_8908` / `field_8905` — so consumers of this library **failed to start 100% of the time in
+  production** (`NoSuchFieldException: color` → `ExceptionInInitializerError` → entrypoint failure; the game could
+  not be launched). The lookup is now **by type / modifiers** (`lookupColorField` / `lookupValuesField`), which holds
+  under both mappings. The remaining reflection (`Unsafe.theUnsafe`, `Enum.name` / `ordinal`) targets **JDK members**
+  and is unaffected by remapping, so it is unchanged.
+- The static block's `catch (ReflectiveOperationException)` is widened to `catch (Throwable)` — the newly added
+  `IllegalStateException` must be wrapped into `ExceptionInInitializerError` the same way, otherwise the failure
+  degrades into a bare RuntimeException.
+- ⚠️ **fabric subproject only**: the other three platforms use Mojang official mappings in production
+  (`color` really is `color`), so they are unaffected and were left untouched. This is a **platform-required
+  difference**, documented in the `AstralRarities` source comments.
+
+
+- **Documentation correction (no bytecode change)**: corrected the inaccurate description of the old code's
+  *first* failure point in the `1.0.6 / 1.0.5-alpha.2` section - the library's old code went through
+  `api.getClass()` (the implementation class, which resolves nested-interface methods), so its real first
+  failure was `getTeamForPlayer`; "reading the accessor off the outer class and throwing right there" is
+  the downstream consumer mod's shape. The `EventTargetCollector` class javadoc was corrected in step.
+  => Comments / docs only: **no version bump, no re-publish** (the published bytecode is unchanged).
 ## Unreleased
 
 > The entries below are **build-script / documentation** changes with no effect on jar contents, so
