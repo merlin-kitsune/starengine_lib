@@ -3,6 +3,33 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
+## 1.0.11 / 1.0.6-alpha.6
+
+> Scope fix (second ruling of the same day, 2026-10-03): the predicate of `TargetType.NON_HOSTILE`
+> (healing / utility effect cards) is changed from "**not a hostile target**"
+> (`!HostileTargets.isHostile`, which also excluded neutral mobs such as untamed wolves / iron golems /
+> polar bears / bees) to "**non-hostile creature**" (`!HostileTargets.isHostileMob`, which only looks at
+> the vanilla `Enemy` marker) => neutral mobs are selectable again. All four artifacts are renumbered
+> together: the three platform lines go `1.0.10` -> **`1.0.11`**, the fabric subproject goes
+> `1.0.6-alpha.5` -> **`1.0.6-alpha.6`**.
+> NOTE: `1.0.10` was superseded **the same day it was built** (it was never pushed to a remote and
+> never distributed - this library ships no jars at all), so its section is kept here for history.
+> This version **adds** one public static method and does not remove or alter any existing member or
+> behaviour => an allowed "addition plus contract-preserving fix" under the 1.x contract.
+
+### Changes
+
+- Added `combat/HostileTargets#isHostileMob(Entity)`: the **single entry point** for the vanilla
+  `Enemy` marker (the "creature category" reading), **parallel to and not interchangeable with**
+  `isHostile` (the "combat" reading: hostile mobs | neutral mobs except tamed pets | angerable tameable
+  animals | entities declared extra by consumers). Game code must no longer write a raw
+  `instanceof Enemy`.
+- `target/SelectorTargets`: the `NON_HOSTILE` route now uses `!HostileTargets.isHostileMob(target)`
+  instead of `!HostileTargets.isHostile(target)` => untamed wolves / iron golems / polar bears / bees
+  (neutral mobs), tamed pets, villagers, passive livestock and players are **all selectable**; only
+  vanilla hostile mobs are not. NOTE: every other scope (damage / attack / sign target picking) is
+  **unchanged, word for word**.
+
 ## 1.0.10 / 1.0.6-alpha.5
 
 > Purely additive: `common`'s `target/TargetType` gains one enum constant and `target/SelectorTargets`

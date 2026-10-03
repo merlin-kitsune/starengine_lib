@@ -3,6 +3,27 @@
 > 本文件仅收录中文更新日志；英文版见 [`CHANGELOG.md`](CHANGELOG.md)。
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 
+## 1.0.11 / 1.0.6-alpha.6
+
+> 口径修正（2026-10-03 同日二次裁决）：`TargetType.NON_HOSTILE`（治疗 / 功能效果牌专用）的判据由
+> 「**非敌方判定**」（`!HostileTargets.isHostile`，会把未驯服的狼 / 铁傀儡 / 北极熊 / 蜜蜂等中立生物
+> 一并排除）改为「**非敌对生物**」（`!HostileTargets.isHostileMob`，只看原版 `Enemy` 标记）
+> ⇒ 中立生物恢复可选。四平台同批换号：三平台 `1.0.10` → **`1.0.11`**，
+> fabric 子项目 `1.0.6-alpha.5` → **`1.0.6-alpha.6`**。
+> ⚠️ **定性说明**：`1.0.10` 发布后**当天即被本版取代**（该版从未推送远端、也从未对外分发 ——
+> 本库不分发任何 jar），故其小节在此保留作为历史。本次**新增**一个 public 静态方法、
+> 未删改任何既有成员或既有语义 ⇒ 属 1.x 契约允许的「新增 + 不改变契约的修正」。
+
+### 变更
+
+- 新增 `combat/HostileTargets#isHostileMob(Entity)`：**原版 `Enemy` 标志**的**唯一入口**（生物类别口径），
+  与既有的 `isHostile`（**战斗口径**：敌对生物 ∪ 中立生物(宠物除外) ∪ 会被激怒的可驯服动物 ∪
+  消费方额外声明的实体）**并列、不互替**；玩法代码不得再写裸的 `instanceof Enemy`。
+- `target/SelectorTargets`：`NON_HOSTILE` 的路由由 `!HostileTargets.isHostile(target)` 改为
+  `!HostileTargets.isHostileMob(target)` ⇒ 未驯服的狼 / 铁傀儡 / 北极熊 / 蜜蜂等中立生物、
+  已驯服宠物、村民、被动家畜、玩家**全部可选**，仅原版敌对生物不可选。
+  ⚠️ 伤害 / 攻击 / 立牌选敌等其它口径**逐字未变**。
+
 ## 1.0.10 / 1.0.6-alpha.5
 
 > 本次是**纯新增**：`common` 的 `target/TargetType` 追加一个枚举常量，`target/SelectorTargets` 为它接上路由
