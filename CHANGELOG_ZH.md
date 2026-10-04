@@ -3,6 +3,20 @@
 > 本文件仅收录中文更新日志；英文版见 [`CHANGELOG.md`](CHANGELOG.md)。
 > 两个文件按版本号一一对应：同一版本号在两边各出现一次，每次改动必须同时更新中英两份，禁止只改一侧。
 
+## 1.0.12
+
+> **客户端 HUD 修正（2026-10-05）**：`client/ActionBarManager` 的 **y 位置**由「硬编码 `guiHeight - 68`」
+> 改为**复刻原版 `Gui#renderOverlayMessage` 的 yShift 规则**（**仅两条 NeoForge 线**）：
+> `yShift = max(Gui.leftHeight, Gui.rightHeight) + (68 - 59)` 且 `y = guiHeight - max(yShift, 68)`。
+> NeoForge 把 `Gui.leftHeight` / `Gui.rightHeight` 两字段 patch 成 `public`（本库的 `neoforge-1.21.1`
+> 与 `neoforge-26.1.2` 子项目均可直读）⇒ **左侧**（血量行数，含吸收心/**黄心**；护甲）或**右侧**
+> （饥饿 / 坐骑血 / 氧气）状态条被堆高时，本模组的 actionbar 会**跟着上抬**，与物品名提示保持 9px 间距。
+> 修前症状：持有黄心（或「护甲 + 黄心」等组合）使 `max(lh, rh) > 59` 时，原版物品名上抬而本模组文本不动 ⇒ **压盖**。
+> ⚠️ **`forge-1.20.1` / `fabric-1.20.1` 保持固定 `guiHeight - 68`** —— 原版 1.20.1 **没有**
+> `leftHeight` / `rightHeight` 这套机制（黄心 / 护甲不会让原版物品名或 actionbar 上抬），
+> 硬跟着算反而错位 ⇒ 属**平台差异**，两平台源码已就地注明。
+> 四平台版本号同批 `1.0.11` → **`1.0.12`**。
+
 ## 1.0.11
 
 > 口径修正（2026-10-03 同日二次裁决）：`TargetType.NON_HOSTILE`（治疗 / 功能效果牌专用）的判据由

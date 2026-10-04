@@ -3,6 +3,22 @@
 > This file contains the English changelog only. Chinese version: [`CHANGELOG_ZH.md`](CHANGELOG_ZH.md).
 > The two files correspond one-to-one by version number: each version appears once in both files, and every change must update both together — never only one side.
 
+## 1.0.12
+
+> **Client HUD fix (2026-10-05)**: `client/ActionBarManager` no longer hard-codes its **y position** as
+> `guiHeight - 68`; on the **two NeoForge lines** it now mirrors vanilla `Gui#renderOverlayMessage`:
+> `yShift = max(Gui.leftHeight, Gui.rightHeight) + (68 - 59)` and `y = guiHeight - max(yShift, 68)`.
+> NeoForge patches `Gui.leftHeight` / `Gui.rightHeight` to `public` (readable from the `neoforge-1.21.1`
+> and `neoforge-26.1.2` subprojects), so when the **left** stack (health rows including absorption /
+> yellow hearts; armor) or the **right** stack (food / vehicle health / air) grows taller, this mod's
+> action bar **moves up with it**, keeping a 9 px gap from the item-name tooltip.
+> Symptom before the fix: with absorption hearts (or armor + absorption) pushing `max(lh, rh) > 59`,
+> vanilla moved the item name up while this mod's line stayed put, so they **overlapped**.
+> NOTE: **`forge-1.20.1` / `fabric-1.20.1` keep the fixed `guiHeight - 68`** - vanilla 1.20.1 has no
+> `leftHeight` / `rightHeight` mechanism at all, so following it there would be wrong. This is a
+> **registered platform difference**, annotated in place in both legacy sources.
+> All four platforms bumped `1.0.11` -> **`1.0.12`**.
+
 ## 1.0.11
 
 > Scope fix (second ruling of the same day, 2026-10-03): the predicate of `TargetType.NON_HOSTILE`
